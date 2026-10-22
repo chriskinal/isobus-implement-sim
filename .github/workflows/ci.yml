@@ -40,20 +40,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: AgOpenGPS-Official/AOG-TaskController
-          ref: 4ede4034de845031caf9efcca69a85452783439d
+          ref: 4af9d6f060750c43c0670c7eeaa6edb2f816e1a6
           path: aog-tc
       - name: AOG-TaskController build cache
         id: tc-cache
         uses: actions/cache@v4
         with:
           path: aog-tc/build/AOG-TaskController
-          key: aog-tc-4ede403-stack-42ea80e-${{ matrix.os }}-v1
-      - name: Build AOG-TaskController against the stack this repository fetches
-        # Its own pin (c0e1ebb) has the DataSpan bug that scrambles its DDI-to-element map (PLAN.md phase 1 record)
+          key: aog-tc-4af9d6f-${{ matrix.os }}-v1
+      - name: Build AOG-TaskController
+        # Its develop head pins a stack past the DataSpan fix (its #110), so it builds against its own pin
         if: steps.tc-cache.outputs.cache-hit != 'true'
         run: |
-          cmake -S aog-tc -B aog-tc/build -G Ninja -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release -Wno-dev \
-                -DFETCHCONTENT_SOURCE_DIR_ISOBUS="$PWD/build/_deps/agisostack-src"
+          cmake -S aog-tc -B aog-tc/build -G Ninja -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release -Wno-dev
           cmake --build aog-tc/build --target AOG-TaskController
       - name: Phase 2. Commands and events on the virtual driver, no bus
         run: python3 tests/scenario_commands.py build/implement profiles

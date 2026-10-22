@@ -140,8 +140,9 @@ compiles with the stack's virtual driver only; bus checks run in an OrbStack Ubu
 profile (`src/ddop.cpp`), runs the model (`src/model.cpp`) at 50 Hz and answers the stack's
 task controller client (`src/tc_client.cpp`); events are JSON lines on stdout. `test_model`
 checks the model and the DDOP of every shipped profile without a bus; `tests/phase1_tc.py`
-runs the profiles against AOG-TaskController 4ede403 headless on `vcan0`, in CI and in the
-OrbStack machine. Results, all on `vcan0`:
+runs the profiles against AOG-TaskController headless on `vcan0`, in CI and in the OrbStack
+machine: 4ede403 at first, its `develop` head 4af9d6f since 2026-10-22. Results, all on
+`vcan0`:
 
 - Every one-boom profile connects in 7 to 9 s and the sections follow the setpoints; the
   measured delays are the profile's within 20 ms (one tick). All three section control methods
@@ -172,10 +173,11 @@ OrbStack machine. Results, all on `vcan0`:
   some chunks onto garbage elements ("Mapped DDI 162 ... to element 3", a row) and those
   chunks never move; which chunks differs from run to run and from machine to machine.
   `tools/ddop_check` built against that stack shows the garbage on the exact bytes the task
-  controller received; the current stack parses the same bytes cleanly. Until its pin moves,
-  the scenarios build AOG-TaskController against the stack this repository fetches
-  (`-DFETCHCONTENT_SOURCE_DIR_ISOBUS`). Raised there as #110 before us and fixed on `develop`
-  (see the upstream filings under phase 4).
+  controller received; the current stack parses the same bytes cleanly. Until its pin moved,
+  the scenarios built AOG-TaskController against the stack this repository fetches
+  (`-DFETCHCONTENT_SOURCE_DIR_ISOBUS`). Raised there as #110 before us and fixed on `develop`,
+  which CI builds against its own pin since 2026-10-22 (see the upstream filings under
+  phase 4).
 - Smaller, from the code: `on_client_timeout` erases the client but not its queue of
   uploaded pool chunks, and `activate_object_pool` parses every queued chunk into one pool.
   A client that leaves by timeout and uploads again would get both pools merged. The
@@ -280,8 +282,8 @@ PROTOCOL.md against 397 in the code,
 [#116](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/116) more than 64
 sections, [#117](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/117) the
 client that times out and is never taken back. The DataSpan pin was already raised and fixed
-there as #110: `develop` (4af9d6f) pins the stack at 1d081d9, past #783, so the scenarios
-could move to it and drop `-DFETCHCONTENT_SOURCE_DIR_ISOBUS`; not done yet.
+there as #110: `develop` (4af9d6f) pins the stack at 1d081d9, past #783. CI checks out that
+commit and builds it against its own pin since 2026-10-22; the override is gone.
 
 **Phase 5 record (2026-10-22).** Done. The model's rates follow their target with the
 product's time constant, within the machine's limit at the current speed (the planter's

@@ -45,6 +45,7 @@ class App:
         self.control = 1
         self.status = None  # last PGN 240: (mode, count, bits)
         self.last_send = 0
+        self.last_control = (None, 0)  # (value sent, when)
 
     def tick(self):
         try:
@@ -63,9 +64,15 @@ class App:
         self.last_send = now
         to = ("127.0.0.1", TC_PORT)
         self.sock.sendto(frame(0xE5, struct.pack("<Q", self.sections & 0xFFFFFFFFFFFFFFFF)), to)
-        self.sock.sendto(frame(0xF1, [self.control]), to)
         # AOG-TaskController reads speed from DDI 397 (ActualSpeed) in app.cpp; its PROTOCOL.md says 156
         self.sock.sendto(frame(0xF2, struct.pack("<Hi", 397, self.speed_mm_s)), to)
+        # PGN 241 is a 7-byte frame, below the TC parser's 8-byte threshold, so it is only parsed
+        # together with the next datagram, which the parser then drops (udp_connections.cpp keeps
+        # its read index after the memmove). Send it last, on change and every two seconds, so the
+        # one datagram it costs is a routine PGN 229 and never the speed.
+        if self.control != self.last_control[0] or now - self.last_control[1] >= 2.0:
+            self.sock.sendto(frame(0xF1, [self.control]), to)
+            self.last_control = (self.control, now)
 
 
 class Implement:

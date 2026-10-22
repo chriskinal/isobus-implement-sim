@@ -148,6 +148,13 @@ OrbStack machine. Results, all on `vcan0`:
   work: AOG-TaskController names the one it chose.
 - Speed: AOG-TaskController's tractor ECU takes speed from DDI 397 in PGN 242, though its
   PROTOCOL.md says 156.
+- AOG-TaskController's UDP parser (`udp_connections.cpp`, `handle_incoming_packets`) parses
+  only the first frame in its buffer: after one frame it moves the rest to the front but keeps
+  reading at the old offset, logs "Unknown start of message" and drops it. A frame under
+  8 bytes (PGN 241 is 7) is not parsed until the next datagram arrives, and that datagram is
+  the one dropped. The harness sends 241 only on change and every 2 s, so the loss is a
+  routine PGN 229 and never the speed; on GitHub's runners the loss was every speed frame.
+  To raise upstream.
 - Section control off from the app sends DDI 160 = 0 about ten times a second, for as long
   as it is off. The implement goes to manual, where the operator's switches rule and default
   on, so every section is on: what a real machine does, and what an app should expect.

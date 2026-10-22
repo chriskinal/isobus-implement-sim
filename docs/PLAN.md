@@ -204,7 +204,11 @@ and values still coming out as events. Commands `alarm`, `key`, `mask`, `value` 
 `mask`, `key`, `value` and `alarm` events. `tools/vt_stub` is a VT version 3 server on the
 stack's server base, 480 x 480, pools in memory, driven from stdin; `tests/scenario_vt.py`
 runs the planter against it on `vcan0`, in CI too. Every profile shows `base.iop` until the
-machines' own pools exist (SEEDER.md and SPRAYER.md section 6).
+machines' own pools exist (SEEDER.md and SPRAYER.md section 6). Mask changes go straight to
+the client's send, not through the stack's update helper: the helper skips a change when its
+tracked active mask, taken from the terminal's 1 Hz status message, already names the mask
+asked for, and after an alarm acknowledge that is the stale case; on GitHub's runners the
+screen then stayed on the alarm (two CI runs), never in the OrbStack machine.
 
 **Phase 4 record (2026-10-22).** Done. `src/fault_driver.cpp` wraps the CAN driver: `fault
 silent <s>` drops every outgoing frame, `fault slow <ms>` holds each one, `fault busoff [n]`

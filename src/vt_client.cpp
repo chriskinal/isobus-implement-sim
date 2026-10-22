@@ -386,10 +386,13 @@ namespace sim
 
 	void TerminalClient::show_mask(std::uint16_t maskId)
 	{
+		// Sent directly, not through the update helper: the helper skips the command when the
+		// terminal's 1 Hz status message still names the mask it is asked for, which after an
+		// alarm acknowledge is exactly the case, and the screen would stay on the alarm.
 		std::lock_guard<std::mutex> lock(vtMutex);
 		if (client && client->get_is_connected())
 		{
-			helper->set_active_data_or_alarm_mask(example_WorkingSet, maskId);
+			client->send_change_active_mask(example_WorkingSet, maskId);
 			currentMask = maskId;
 		}
 	}

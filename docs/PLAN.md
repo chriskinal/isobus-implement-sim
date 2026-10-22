@@ -154,7 +154,7 @@ OrbStack machine. Results, all on `vcan0`:
   8 bytes (PGN 241 is 7) is not parsed until the next datagram arrives, and that datagram is
   the one dropped. The harness sends 241 only on change and every 2 s, so the loss is a
   routine PGN 229 and never the speed; on GitHub's runners the loss was every speed frame.
-  To raise upstream.
+  Raised as AOG-TaskController #112.
 - Section control off from the app sends DDI 160 = 0 about ten times a second, for as long
   as it is off. The implement goes to manual, where the operator's switches rule and default
   on, so every section is on: what a real machine does, and what an app should expect.
@@ -174,7 +174,8 @@ OrbStack machine. Results, all on `vcan0`:
   `tools/ddop_check` built against that stack shows the garbage on the exact bytes the task
   controller received; the current stack parses the same bytes cleanly. Until its pin moves,
   the scenarios build AOG-TaskController against the stack this repository fetches
-  (`-DFETCHCONTENT_SOURCE_DIR_ISOBUS`). To raise upstream, with the pin bump.
+  (`-DFETCHCONTENT_SOURCE_DIR_ISOBUS`). Raised there as #110 before us and fixed on `develop`
+  (see the upstream filings under phase 4).
 - Smaller, from the code: `on_client_timeout` erases the client but not its queue of
   uploaded pool chunks, and `activate_object_pool` parses every queued chunk into one pool.
   A client that leaves by timeout and uploads again would get both pools merged. The
@@ -264,7 +265,23 @@ second identity. `tests/scenario_faults.py` runs them all against AOG-TaskContro
   the walk, and the one over the internal control functions in
   `process_can_message_for_address_violations`, took nothing. The same patch copies both
   lists under the mutex before walking them, as the stack already does for its global PGN
-  callbacks. Both races are the stack's; to raise upstream with AOG-TaskController's items.
+  callbacks. Both races are the stack's: raised as
+  [AgIsoStack++ PR #798](https://github.com/Open-Agriculture/AgIsoStack-plus-plus/pull/798)
+  (the patch's two commits, 243 of 243 stack tests passing with them); the patch stays here
+  until it lands and the pin moves.
+
+**Upstream filings (2026-10-22).** On AOG-TaskController, from the phase 1, 2 and 4 records:
+[#112](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/112) the UDP parser,
+[#113](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/113) the pool queue
+left behind on client timeout,
+[#114](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/114) DDI 156 in
+PROTOCOL.md against 397 in the code,
+[#115](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/115) two booms,
+[#116](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/116) more than 64
+sections, [#117](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/117) the
+client that times out and is never taken back. The DataSpan pin was already raised and fixed
+there as #110: `develop` (4af9d6f) pins the stack at 1d081d9, past #783, so the scenarios
+could move to it and drop `-DFETCHCONTENT_SOURCE_DIR_ISOBUS`; not done yet.
 
 **Phase 5 record (2026-10-22).** Done. The model's rates follow their target with the
 product's time constant, within the machine's limit at the current speed (the planter's

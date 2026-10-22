@@ -94,7 +94,7 @@ one patch, `cmake/agisostack-restart-races.patch`: its TC and VT clients let one
 time join the worker thread in `terminate()`, and its network manager copies its control
 function lists under their mutex before walking them, so that a restart on another thread
 during the stack's own termination after a rejected DDOP neither hangs nor crashes (PLAN.md,
-phase 4 record). To see the seeder example
+phase 4 record; upstream as [AgIsoStack++ PR #798](https://github.com/Open-Agriculture/AgIsoStack-plus-plus/pull/798)). To see the seeder example
 claim an address on a virtual bus (what CI checks):
 
 ```sh

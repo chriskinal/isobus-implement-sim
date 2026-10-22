@@ -20,8 +20,11 @@ namespace sim
 		bool get_is_valid() const override { return real->get_is_valid(); }
 		void close() override { real->close(); }
 		void open() override { real->open(); }
-		bool read_frame(isobus::CANMessageFrame &frame) override { return real->read_frame(frame); }
+		bool read_frame(isobus::CANMessageFrame &frame) override;
 		bool write_frame(const isobus::CANMessageFrame &frame) override;
+
+		/// @brief Prints every frame in and out on stderr, candump style (--trace).
+		void set_trace(bool on) { trace = on; }
 
 		/// @brief Drops every outgoing frame until the given steady-clock millisecond.
 		void silent_until(std::uint64_t untilMs) { silentUntilMs = untilMs; }
@@ -37,6 +40,8 @@ namespace sim
 
 	private:
 		std::shared_ptr<isobus::CANHardwarePlugin> real;
+		std::atomic<bool> trace{ false };
+		void print(const char *direction, const isobus::CANMessageFrame &frame) const;
 		std::atomic<std::uint64_t> silentUntilMs{ 0 };
 		std::atomic<std::uint32_t> delayMs{ 0 };
 		std::atomic<std::uint64_t> droppedFrames{ 0 };

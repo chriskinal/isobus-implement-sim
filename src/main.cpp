@@ -68,13 +68,14 @@ namespace
 	{
 		std::fprintf(stderr,
 		             "usage: implement --profile <file> [--interface vcan0] [--driver socketcan|virtual|peak] [--port 0|<n>] [--pool <file.iop>]\n"
-		             "                 [--section-control setpoint|actualSettable|perElement] [--log debug|info|warn|error]\n");
+		             "                 [--section-control setpoint|actualSettable|perElement] [--log debug|info|warn|error] [--trace]\n");
 	}
 }
 
 int main(int argc, char **argv)
 {
 	std::string profilePath, interface, driverName, sectionControl, poolOverride, logLevel = "warn";
+	bool trace = false;
 	int port = -1;
 	for (int i = 1; i < argc; i++)
 	{
@@ -87,6 +88,10 @@ int main(int argc, char **argv)
 		else if (a == "--interface" && hasValue)
 		{
 			interface = argv[++i];
+		}
+		else if (a == "--trace")
+		{
+			trace = true;
 		}
 		else if (a == "--driver" && hasValue)
 		{
@@ -154,6 +159,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	auto driver = std::make_shared<sim::FaultyDriver>(realDriver);
+	driver->set_trace(trace);
 
 	sim::Events events;
 	sim::Model model(profile);

@@ -196,8 +196,9 @@ every event, and each command is answered with a `command` event. Built: `switch
 on the stack's virtual driver with no bus (runs on macOS too), and `tests/scenario_tc.py` is the
 phase 1 check as a scenario, with operator overrides through commands. Both run in CI.
 
-**Phase 3 record (2026-10-22).** Done against a headless terminal; a check against
-AgIsoVirtualTerminal on a desktop is still to be done by hand. `src/vt_client.cpp` loads the
+**Phase 3 record (2026-10-22).** Done against a headless terminal, and in the evening against
+AgIsoVirtualTerminal on a PC over a real bus (the PEAK adapter on the Mac, hardware note below).
+`src/vt_client.cpp` loads the
 profile's pool, uploads it under a version label hashed from its bytes, and shows the stack's
 seeder screen with behaviour when the pool is `pools/base.iop` (MIT, shipped unchanged with its
 ID header): six section toggles, the auto/manual button, speed, the statistics numbers, the
@@ -212,6 +213,24 @@ the client's send, not through the stack's update helper: the helper skips a cha
 tracked active mask, taken from the terminal's 1 Hz status message, already names the mask
 asked for, and after an alarm acknowledge that is the stale case; on GitHub's runners the
 screen then stayed on the alarm (two CI runs), never in the OrbStack machine.
+
+**Phase 3 on the bench (2026-10-22, evening).** AgIsoVirtualTerminal on a PC, its adapter and
+the Mac's PEAK on one cable, the sprayer with `--driver peak`. First the bus was silent on
+both sides for an hour: `tools/can_sniff` (written for this; candump for the stack's drivers,
+with a request-for-address-claim probe) heard nothing until the cable was found unplugged.
+Then the terminal, at address 0x26, answered every query but one: the stack's client sent
+Extended Get Versions (0xD3) because the 16-character hash label the stack's own
+`hash_object_pool_to_version` makes is longer than 7, the terminal never answered it, and the
+client timed out, reset and tried again forever, never falling back to an upload. With the
+label cut to 7 characters the client asks with Get Versions (0xE0), the terminal answers,
+the 39 kB pool goes up over ETP in 10 s, "Stored object pool with no error", connected at
+11 s, version 4 reported. Seen from the PC: the no-speed alarm 10 s later, acknowledged with
+the soft key from the terminal (the key event came back), `speed 12` clearing it, sections
+switched by command, the settings mask and back, the no-task-controller alarm. Two findings
+for upstream: AgIsoVirtualTerminal does not answer Extended Get Versions, and the stack's
+client has no fallback when the versions query goes unanswered, so every example client in
+the stack (same hash label) meets the same wall against that terminal. `implement --trace`
+prints every frame in and out on stderr, candump style, which is what showed it.
 
 **Phase 4 record (2026-10-22).** Done. `src/fault_driver.cpp` wraps the CAN driver: `fault
 silent <s>` drops every outgoing frame, `fault slow <ms>` holds each one, `fault busoff [n]`

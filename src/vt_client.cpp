@@ -11,6 +11,16 @@
 
 namespace sim
 {
+	// The first 7 characters of the stack's 16-character pool hash. A label longer than 7 makes
+	// the stack's client ask the terminal with Extended Get Versions (VT version 5, 32-byte
+	// labels), which AgIsoVirtualTerminal on the bench never answered, and the client then
+	// resets forever instead of uploading (PLAN.md phase 3 record). 7 bytes is the label every
+	// terminal from version 3 on stores.
+	static std::string short_version_label(const std::vector<std::uint8_t> &pool)
+	{
+		return isobus::IOPFileInterface::hash_object_pool_to_version(pool.data(), pool.size()).substr(0, 7);
+	}
+
 	using VTC = isobus::VirtualTerminalClient;
 
 	namespace
@@ -77,7 +87,7 @@ namespace sim
 			events.emit("vt", { { "connected", false }, { "pool", false }, { "error", "pool file empty or unreadable: " + poolPath } });
 			return false;
 		}
-		versionLabel = isobus::IOPFileInterface::hash_object_pool_to_version(pool);
+		versionLabel = short_version_label(pool);
 		const auto slash = poolPath.find_last_of('/');
 		const std::string file = poolPath.substr(slash == std::string::npos ? 0 : slash + 1);
 		behaviour = file == "base.iop";
@@ -193,7 +203,7 @@ namespace sim
 				}
 			}
 		}
-		versionLabel = label.empty() ? isobus::IOPFileInterface::hash_object_pool_to_version(uploaded) : label;
+		versionLabel = label.empty() ? short_version_label(uploaded) : label;
 		events.emit("vt", { { "connected", false }, { "pool", true }, { "reupload", true }, { "bytes", uploaded.size() }, { "version", versionLabel } });
 		leave();
 		std::lock_guard<std::mutex> session(sessionMutex);

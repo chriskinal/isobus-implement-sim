@@ -1,5 +1,7 @@
 #include "fault_driver.hpp"
 
+#include <cstdio>
+
 #include <chrono>
 #include <cstring>
 #include <thread>
@@ -21,8 +23,33 @@ namespace sim
 		return now_ms() < silentUntilMs;
 	}
 
+	bool FaultyDriver::read_frame(isobus::CANMessageFrame &frame)
+	{
+		const bool got = real->read_frame(frame);
+		if (got && trace)
+		{
+			print("rx", frame);
+		}
+		return got;
+	}
+
+	void FaultyDriver::print(const char *direction, const isobus::CANMessageFrame &frame) const
+	{
+		char line[96];
+		int n = std::snprintf(line, sizeof(line), "%llu %s %08X [%u]", static_cast<unsigned long long>(now_ms()), direction, frame.identifier, frame.dataLength);
+		for (std::uint8_t i = 0; i < frame.dataLength && i < 8 && n > 0 && n < static_cast<int>(sizeof(line)) - 4; i++)
+		{
+			n += std::snprintf(line + n, sizeof(line) - n, " %02X", frame.data[i]);
+		}
+		std::fprintf(stderr, "%s\n", line);
+	}
+
 	bool FaultyDriver::write_frame(const isobus::CANMessageFrame &frame)
 	{
+		if (trace)
+		{
+			print("tx", frame);
+		}
 		if (silent())
 		{
 			droppedFrames++;

@@ -31,7 +31,8 @@ PEAK PCAN-USB on macOS (the stack's MacCAN driver; the first channel is 1),
 `--port 0` (or a number) to take commands on a local TCP port as well as stdin, `--pool <file.iop>`
 to show another pool than the profile's (one extracted from a capture, or `pools/aux_functions.iop`),
 `--section-control setpoint|actualSettable|perElement` to override the profile's section
-control method, `--log debug|info|warn|error` for the stack's log on stderr. Events are one
+control method, `--log debug|info|warn|error` for the stack's log on stderr, `--trace` to print
+every CAN frame in and out on stderr (candump style, through the fault driver). Events are one
 JSON object a line on stdout and to every TCP client, for example:
 
 ```

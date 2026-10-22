@@ -74,6 +74,12 @@ def main():
         check(t is not None, "acknowledged from the terminal")
         t = wait(vt, imp, 3.0, lambda: vt.mask == MAIN_MASK)
         check(t is not None, "back to the run screen after the acknowledge (%s)" % vt.mask)
+        if t is None:
+            note("  implement mask/alarm/vt events: %s" % ", ".join(
+                "%s@%d:%s" % (e["event"], e["t"], e.get("mask", e.get("state", e.get("connected")))) for e in imp.events[-40:] if e["event"] in ("mask", "alarm", "vt")))
+            note("  stub mask events: %s" % ", ".join("%d@%d" % (e["mask"], e["t"]) for e in vt.find("mask")[-8:]))
+            err = imp.err.decode(errors="replace")
+            note("  implement stderr: %d lines, %d timeouts; tail: %s" % (err.count("\n"), err.count("timed out"), err[-300:].replace("\n", " | ")))
         imp.send("speed 10")
         t = wait(vt, imp, 3.0, lambda: imp.find("alarm", name="noSpeed", state="cleared"))
         check(t is not None, "speed back: alarm cleared")
@@ -107,6 +113,8 @@ def main():
         # Speed on the screen: the readout value sent to the terminal
         vals = vt.find("change", id=21012)
         check(vals and vals[-1]["value"] == 2778, "speed readout sent to the terminal: %s" % (vals[-1]["value"] if vals else None))
+        err = imp.err.decode(errors="replace")
+        note("implement stderr: %d lines, %d command timeouts" % (err.count("\n"), err.count("timed out")))
     finally:
         if imp:
             imp.stop()

@@ -219,7 +219,7 @@ static void test_totals_and_bin(const std::string &dir)
 	CHECK(near(m.boom(0).effectiveDistanceMm, 1093611.0, 11000.0), "effective distance %.0f mm", m.boom(0).effectiveDistanceMm);
 	CHECK(near(m.product(0).tripTotal, 80000.0, 1600.0), "seeds applied %.0f", m.product(0).tripTotal);
 	CHECK(near(m.product(0).level, 1500000.0 - 80000.0, 1600.0), "hopper level %.0f", m.product(0).level);
-	CHECK(near(m.product(0).actualRate, 80000.0, 0.1), "actual rate while applying %.0f", m.product(0).actualRate);
+	CHECK(near(m.product(0).actualRate, 80000.0, 80000.0 * 0.05), "actual rate while applying %.0f", m.product(0).actualRate);
 
 	// Speed goes stale after two seconds: nothing accrues
 	const double areaBefore = m.boom(0).areaM2;
@@ -230,7 +230,7 @@ static void test_totals_and_bin(const std::string &dir)
 	}
 	CHECK(!m.speed_known(), "speed unknown after 3 s of silence");
 	CHECK(near(m.boom(0).areaM2, areaBefore, 10000.0 / 1093.6 * 2.1 * 9.144 + 1.0), "area stops accruing without speed");
-	CHECK(m.product(0).actualRate == 0.0, "no rate without speed");
+	CHECK(m.product(0).actualRate < 80000.0 * 0.01, "no rate without speed (%.0f)", m.product(0).actualRate);
 
 	// Rates: the TC's setpoint is clipped to the limits; prescription off hands over to the operator
 	CHECK(m.set_tc_rate(0, 500000), "a rate above the maximum is clipped");
@@ -247,19 +247,148 @@ static void test_sprayer_model(const std::string &dir)
 	auto p = sim::load_profile(dir + "/sprayer-24.json");
 	p.delayOn = 0;
 	p.delayOff = 0;
+	p.products[0].noise = 0; // the numbers below are exact without it
 	sim::Model m(p);
 	m.tick(0);
 	for (std::size_t i = 0; i < 12; i++)
 	{
 		m.set_section_setpoint(0, i, true);
 	}
-	m.set_speed(12000.0 / 3.6, 20);
-	m.tick(20);
-	m.tick(40);
+	std::uint32_t t = 0;
+	auto run = [&](double seconds) {
+		for (double d = 0; d < seconds; d += 0.02)
+		{
+			t += 20;
+			m.set_speed(12000.0 / 3.6, t);
+			m.tick(t);
+		}
+	};
+	// The rate rises with the 1 s time constant: 63 % after 1 s, within 2 % after 5 s
+	run(1.0);
+	CHECK(near(m.product(0).actualRate, 150.0 * 0.632, 3.0), "rate after one time constant %.1f l/ha", m.product(0).actualRate);
+	run(4.0);
+	CHECK(near(m.product(0).actualRate, 150.0, 3.0), "rate settled %.1f l/ha", m.product(0).actualRate);
 	// 150 l/ha × 24 m × 12 km/h / 600 = 72 l/min; 1.5 l/min a nozzle; 3 × (1.5/1.6)² = 2.64 bar
-	CHECK(near(m.product(0).flowLPerMin, 72.0, 0.01), "flow %.2f l/min", m.product(0).flowLPerMin);
-	CHECK(near(m.product(0).pressureBar, 2.637, 0.01), "pressure %.2f bar", m.product(0).pressureBar);
-	CHECK(near(m.row_spacing_mm(0, 0, 0), 0, 0.1) || true, "n/a");
+	CHECK(near(m.product(0).flowLPerMin, 72.0, 1.5), "flow %.2f l/min", m.product(0).flowLPerMin);
+	CHECK(near(m.product(0).pressureBar, 2.637, 0.1), "pressure %.2f bar", m.product(0).pressureBar);
+	// A step to 200: 4.7 bar once settled
+	m.set_tc_rate(0, 200);
+	run(5.0);
+	CHECK(near(m.product(0).actualRate, 200.0, 4.0), "rate after a step %.1f", m.product(0).actualRate);
+	CHECK(near(m.product(0).pressureBar, 4.69, 0.2), "pressure after the step %.2f bar", m.product(0).pressureBar);
+	// The pump's limit: 60 l/min at 24 m and 12 km/h is 125 l/ha
+	p.sprayer.pumpMaxFlow = 60;
+	sim::Model m2(p);
+	m2.tick(0);
+	for (std::size_t i = 0; i < 12; i++)
+	{
+		m2.set_section_setpoint(0, i, true);
+	}
+	t = 0;
+	for (double d = 0; d < 8.0; d += 0.02)
+	{
+		t += 20;
+		m2.set_speed(12000.0 / 3.6, t);
+		m2.tick(t);
+	}
+	CHECK(m2.product(0).limited && near(m2.product(0).actualRate, 125.0, 3.0), "pump limit: %.1f l/ha against a 150 target, limited=%d", m2.product(0).actualRate, m2.product(0).limited);
+
+	// Noise: with it on, the actual wanders around the target by about the profile's fraction
+	auto pn = sim::load_profile(dir + "/sprayer-24.json");
+	pn.delayOn = 0;
+	pn.delayOff = 0;
+	sim::Model m3(pn);
+	m3.seed_noise(7);
+	m3.tick(0);
+	for (std::size_t i = 0; i < 12; i++)
+	{
+		m3.set_section_setpoint(0, i, true);
+	}
+	t = 0;
+	double sum = 0, sumSq = 0;
+	int n = 0;
+	for (double d = 0; d < 30.0; d += 0.02)
+	{
+		t += 20;
+		m3.set_speed(12000.0 / 3.6, t);
+		m3.tick(t);
+		if (d > 10.0)
+		{
+			sum += m3.product(0).actualRate;
+			sumSq += m3.product(0).actualRate * m3.product(0).actualRate;
+			n++;
+		}
+	}
+	const double mean = sum / n, sd = std::sqrt(std::max(0.0, sumSq / n - mean * mean));
+	CHECK(near(mean, 150.0, 1.0) && sd > 1.0 && sd < 6.0, "noise: mean %.1f, sd %.2f (2 %% of 150 is 3)", mean, sd);
+}
+
+static void test_seeder_limits(const std::string &dir)
+{
+	// The planter's meter cannot keep up above 16 km/h: at 20 km/h the rate is 16/20 of the target
+	auto p = sim::load_profile(dir + "/planter-12.json");
+	p.delayOn = 0;
+	p.delayOff = 0;
+	p.products[0].noise = 0;
+	sim::Model m(p);
+	m.tick(0);
+	for (std::size_t i = 0; i < 12; i++)
+	{
+		m.set_section_setpoint(0, i, true);
+	}
+	std::uint32_t t = 0;
+	for (double d = 0; d < 6.0; d += 0.02)
+	{
+		t += 20;
+		m.set_speed(20000.0 / 3.6, t);
+		m.tick(t);
+	}
+	CHECK(m.product(0).limited && near(m.product(0).actualRate, 64000.0, 1500.0), "meter limit at 20 km/h: %.0f seeds/ha", m.product(0).actualRate);
+	// Singulation falls above the 10 km/h knee: 98.5 % minus 1 % a km/h is 88.5 % at 20
+	double s = 0;
+	for (std::size_t i = 0; i < 12; i++)
+	{
+		s += m.row_singulation(0, i);
+	}
+	CHECK(near(s / 12.0, 0.885, 0.02), "singulation at 20 km/h %.3f", s / 12.0);
+
+	// The drill's delivery delay holds the rate for the off delay after a section is commanded off
+	auto d = sim::load_profile(dir + "/drill-6m.json");
+	d.products[0].noise = 0;
+	d.products[1].noise = 0;
+	sim::Model md(d);
+	md.tick(0);
+	for (std::size_t i = 0; i < 4; i++)
+	{
+		md.set_section_setpoint(0, i, true);
+	}
+	t = 0;
+	for (double x = 0; x < 10.0; x += 0.02)
+	{
+		t += 20;
+		md.set_speed(10000.0 / 3.6, t);
+		md.tick(t);
+	}
+	CHECK(near(md.product(0).actualRate, 180.0, 2.0) && near(md.product(1).actualRate, 100.0, 2.0), "drill: both products at their rates (%.1f, %.1f)", md.product(0).actualRate, md.product(1).actualRate);
+	for (std::size_t i = 0; i < 4; i++)
+	{
+		md.set_section_setpoint(0, i, false);
+	}
+	const double levelBefore = md.product(0).level;
+	for (double x = 0; x < 0.7; x += 0.02)
+	{
+		t += 20;
+		md.set_speed(10000.0 / 3.6, t);
+		md.tick(t);
+	}
+	CHECK(md.any_actual_on(0) && md.product(0).level < levelBefore, "drill: 0.7 s after all off the seed is still flowing (off delay 0.8 s)");
+	for (double x = 0; x < 6.0; x += 0.02)
+	{
+		t += 20;
+		md.set_speed(10000.0 / 3.6, t);
+		md.tick(t);
+	}
+	CHECK(!md.any_actual_on(0) && md.product(0).actualRate < 1.0, "drill: then off, rate %.2f", md.product(0).actualRate);
 }
 
 static void test_ddop(const std::string &dir)
@@ -397,6 +526,7 @@ int main(int argc, char **argv)
 		test_condensed_padding();
 		test_totals_and_bin(dir);
 		test_sprayer_model(dir);
+		test_seeder_limits(dir);
 		test_ddop(dir);
 	}
 	catch (const std::exception &e)

@@ -18,6 +18,7 @@ namespace sim
 			for (auto &sec : s.sections)
 			{
 				sec.sw = prof.switchesDefault;
+				sec.singulation = prof.seeder.singulationBase;
 			}
 			booms.push_back(s);
 		}
@@ -27,6 +28,7 @@ namespace sim
 			s.operatorRate = p.rate;
 			s.tcRate = p.rate;
 			s.level = p.bin.level;
+			s.low = p.bin.capacity > 0 && s.level < p.bin.low * p.bin.capacity;
 			products.push_back(s);
 		}
 	}
@@ -217,27 +219,74 @@ namespace sim
 		update_products(dtS, distanceMm);
 	}
 
-	void Model::update_products(double, double distanceMm)
+	double Model::gaussian()
 	{
+		// Two uniform draws from a small xorshift, summed and centred: close enough to normal for noise
+		double sum = 0;
+		for (int i = 0; i < 4; i++)
+		{
+			rng ^= rng << 13;
+			rng ^= rng >> 17;
+			rng ^= rng << 5;
+			sum += static_cast<double>(rng) / 4294967295.0;
+		}
+		return (sum - 2.0) * std::sqrt(3.0);
+	}
+
+	void Model::update_products(double dtS, double distanceMm)
+	{
+		const double speedKmh = speedMmS * 3.6 / 1000.0;
 		for (std::size_t pi = 0; pi < products.size(); pi++)
 		{
 			auto &s = products[pi];
 			const auto &p = prof.products[pi];
 			const std::int32_t widthOn = width_on_mm(p.boom);
 			const double target = target_rate(pi);
-			// Phase 1: the actual follows the target at once when applying (lag, noise and limits are phase 5)
 			const bool applying = widthOn > 0 && speedKnown && speedMmS > 0 && !s.empty;
-			s.actualRate = applying ? target : 0.0;
+
+			// What the machine can do at this speed (SEEDER.md and SPRAYER.md section 5)
+			double limit = p.max > 0 ? p.max : target;
+			if (prof.type == "seeder" && prof.seeder.meterMaxSpeed > 0 && speedKmh > prof.seeder.meterMaxSpeed)
+			{
+				limit = std::min(limit, target * prof.seeder.meterMaxSpeed / speedKmh);
+			}
+			if (prof.type == "sprayer" && applying)
+			{
+				// the pump's flow at this speed and width, back in l/ha
+				const double maxRate = prof.sprayer.pumpMaxFlow * 600.0 / ((widthOn / 1000.0) * speedKmh);
+				limit = std::min(limit, maxRate);
+			}
+			s.limitRate = limit;
+			const double wanted = applying ? std::min(target, limit) : 0.0;
+			s.limited = applying && target > limit + 1e-9;
+
+			// First-order lag toward it, then noise (MODEL.md section 3)
+			if (p.tau > 0 && dtS > 0)
+			{
+				const double alpha = 1.0 - std::exp(-dtS / p.tau);
+				s.smoothRate += (wanted - s.smoothRate) * alpha;
+			}
+			else
+			{
+				s.smoothRate = wanted;
+			}
+			if (!applying)
+			{
+				s.smoothRate = 0.0; // valves shut, meters stop: nothing is applied, whatever the regulator was doing
+			}
+			const double noise = (applying && p.noise > 0) ? target * p.noise * gaussian() : 0.0;
+			s.actualRate = std::max(0.0, s.smoothRate + noise);
+
 			const double areaHa = (widthOn / 1000.0) * (distanceMm / 1000.0) / 10000.0;
-			const double applied = s.actualRate * areaHa; // in the product's unit
+			const double applied = s.smoothRate * areaHa; // in the product's unit
 			s.tripTotal += applied;
 			s.lifetimeTotal += applied;
 			s.level = std::max(0.0, s.level - applied);
 			s.empty = s.level <= 0;
+			s.low = p.bin.capacity > 0 && s.level < p.bin.low * p.bin.capacity;
 			if (prof.type == "sprayer")
 			{
 				// flow l/min = rate l/ha × width m × speed km/h / 600; pressure from the flow a nozzle
-				const double speedKmh = speedMmS * 3.6 / 1000.0;
 				double flow = s.actualRate * (widthOn / 1000.0) * speedKmh / 600.0;
 				flow = std::min(flow, prof.sprayer.pumpMaxFlow);
 				s.flowLPerMin = flow;
@@ -245,6 +294,22 @@ namespace sim
 				const double perNozzle = flow / nozzles;
 				const double ratio = perNozzle / prof.sprayer.nozzleFlow;
 				s.pressureBar = widthOn > 0 ? prof.sprayer.nozzlePressure * ratio * ratio : 0.0;
+			}
+		}
+
+		// Seeder rows: singulation falls above the knee speed and wanders a little, row by row
+		if (prof.type == "seeder" && prof.seeder.rowData)
+		{
+			const auto &g = prof.seeder;
+			const double base = g.singulationBase - (speedKmh > g.singulationKnee ? (speedKmh - g.singulationKnee) * g.singulationSlope : 0.0);
+			for (auto &b : booms)
+			{
+				for (auto &sec : b.sections)
+				{
+					const double walk = g.singulationWalk * std::sqrt(std::max(dtS, 0.0)) * gaussian();
+					sec.singulation += (base - sec.singulation) * std::min(1.0, dtS) + walk;
+					sec.singulation = std::min(1.0, std::max(0.0, sec.singulation));
+				}
 			}
 		}
 	}
@@ -370,7 +435,7 @@ namespace sim
 	double Model::row_singulation(std::size_t boom, std::size_t index) const
 	{
 		const auto &s = booms.at(boom).sections.at(index);
-		return s.error ? 0.0 : prof.seeder.singulationBase;
+		return s.error ? 0.0 : s.singulation;
 	}
 
 	std::int32_t Model::row_spacing_mm(std::size_t boom, std::size_t index, std::size_t product) const

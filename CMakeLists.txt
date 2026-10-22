@@ -77,3 +77,8 @@ target_link_libraries(ddop_check PRIVATE isobus::Isobus isobus::Utility)
 add_executable(vt_stub tools/vt_stub.cpp ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
 target_include_directories(vt_stub PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
 target_link_libraries(vt_stub PRIVATE isobus::Isobus isobus::HardwareIntegration isobus::Utility nlohmann_json::nlohmann_json Threads::Threads)
+
+# A headless task controller for the scenarios (phase 5)
+add_executable(tc_stub tools/tc_stub.cpp ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
+target_include_directories(tc_stub PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
+target_link_libraries(tc_stub PRIVATE isobus::Isobus isobus::HardwareIntegration isobus::Utility nlohmann_json::nlohmann_json Threads::Threads)

@@ -19,6 +19,7 @@ namespace sim
 		bool error = false; ///< A faulted section: reports error and is off
 		bool pending = false; ///< A change is waiting out its delay
 		std::uint32_t pendingSince = 0;
+		double singulation = 0; ///< Seeder rows: the fraction of seeds placed singly, with its random walk
 	};
 
 	struct BoomState
@@ -39,7 +40,11 @@ namespace sim
 		bool prescription = true; ///< DDI 158: the TC's setpoint rules
 		double operatorRate = 0; ///< The operator's target, in the profile's unit
 		double tcRate = 0; ///< The task controller's setpoint, clipped
-		double actualRate = 0;
+		double actualRate = 0; ///< Reported: the lagged, limited, noisy rate
+		double smoothRate = 0; ///< The lagged rate before noise
+		double limitRate = 0; ///< What the machine can do at this speed (MODEL.md section 3)
+		bool limited = false; ///< The target is above the machine's limit
+		bool low = false; ///< Bin below its low fraction
 		double level = 0; ///< Bin level, in the bin's unit
 		double tripTotal = 0;
 		double lifetimeTotal = 0;
@@ -102,8 +107,10 @@ namespace sim
 		std::string setpoint_string(std::size_t boom) const;
 		std::string commanded_string(std::size_t boom) const;
 
-		// Seeder rows (static until phase 5 adds the dynamics)
+		// Seeder rows
 		double row_singulation(std::size_t boom, std::size_t index) const;
+		/// @brief Seeds the noise and the random walks, for tests that want the same run twice.
+		void seed_noise(std::uint32_t seed) { rng = seed; }
 		std::int32_t row_spacing_mm(std::size_t boom, std::size_t index, std::size_t product) const;
 
 	private:
@@ -122,5 +129,7 @@ namespace sim
 		bool ticked = false;
 		std::uint32_t delayOnMs;
 		std::uint32_t delayOffMs;
+		std::uint32_t rng = 0x9E3779B9u;
+		double gaussian();
 	};
 }

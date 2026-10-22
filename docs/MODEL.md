@@ -72,10 +72,12 @@ it off, the operator's value from the terminal, the `rate` command, or the profi
 A TC setpoint outside `min` and `max` is clipped and an event says so; the clipped value is
 what is reported back.
 
-**Actual.** Zero when no section is on or speed is zero. Otherwise a first-order lag toward the
-target with time constant `rate.tau` (seconds), then the machine's own limits (meter speed,
-pump flow: per type), then noise: a gaussian of `rate.noise` times the target, fresh every
-tick. Reported in the DDI's unit at the TC's chosen interval, default 1 s.
+**Actual.** Zero when no section is on or speed is zero, and the regulator starts afresh when
+application resumes. Otherwise a first-order lag toward the lesser of the target and the
+machine's limit at this speed (meter speed, pump flow: per type) with time constant `tau`
+(seconds), then noise: a gaussian of `noise` times the target, fresh every tick. Bins and
+totals use the lagged rate without the noise. Reported in the DDI's unit at the TC's chosen
+interval, default 1 s.
 
 | `unit` | Setpoint, actual, minimum, maximum | DDI unit | One profile unit is |
 |---|---|---|---|

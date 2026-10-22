@@ -8,8 +8,8 @@ Each implement comes from a profile file (booms, sections, rates, screens), is d
 commands, reports what the system under test did as events, and can misbehave on demand: drop
 off the bus, restart, upload a new pool, answer late.
 
-**Status:** phase 4 of [docs/PLAN.md](docs/PLAN.md): a task controller client and a terminal
-client built from a profile, driven by commands, with faults on demand. The DDOP comes from the profile's booms,
+**Status:** phase 5 of [docs/PLAN.md](docs/PLAN.md): a task controller client and a terminal
+client built from a profile, driven by commands, with rates, totals and faults on demand. The DDOP comes from the profile's booms,
 sections and products; sections follow the task controller's setpoints after the profile's
 delay; the profile's pool goes to a terminal, with the stack's seeder screen behind it for now;
 commands arrive on stdin or a TCP port and events go out as JSON lines; the implement can go
@@ -56,7 +56,9 @@ status
 `build/ddop_check <file.ddop>` parses a binary DDOP, such as one a task controller saved, and
 prints its element tree and any broken child references. `build/vt_stub --interface vcan0` is
 a headless virtual terminal for the scenarios: it takes the implement's pool and injects key
-presses and values from stdin.
+presses and values from stdin. `build/tc_stub --interface vcan0` is a headless task controller
+that takes any DDOP, sends set-value, request and measurement commands from stdin, and prints
+every value the implement reports.
 
 ## Tests
 
@@ -65,7 +67,8 @@ presses and values from stdin.
 virtual driver, on any platform. On Linux with `vcan0`, `tests/scenario_tc.py` runs every
 shipped profile against a headless AOG-TaskController and checks that sections follow with the
 profile's delay and that the operator's commands override it; `tests/scenario_vt.py` runs the
-screens against `vt_stub`; `tests/scenario_faults.py` runs every fault against both;
+screens against `vt_stub`; `tests/scenario_rates.py` drives rates and totals through `tc_stub`;
+`tests/scenario_faults.py` runs every fault against AOG-TaskController and `vt_stub`;
 `tests/harness.py` is the library the scenarios share.
 
 ## Build

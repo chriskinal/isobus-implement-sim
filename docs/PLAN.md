@@ -238,6 +238,22 @@ second identity. `tests/scenario_faults.py` runs them all against AOG-TaskContro
   followed the bad DDOP; the run with `HARNESS_GDB=1` (the harness attaches gdb to a silent
   implement) did not reproduce it. Open item.
 
+**Phase 5 record (2026-10-22).** Done. The model's rates follow their target with the
+product's time constant, within the machine's limit at the current speed (the planter's
+meter above its speed, the sprayer's pump flow), with gaussian noise of the profile's
+fraction; the rate is zero whenever nothing is applied and the regulator starts afresh. Row
+singulation falls above the knee speed and wanders a little, row by row. Bins drain by the
+lagged rate, trip and lifetime totals accumulate, a task controller's zero resets a trip
+total. `tools/tc_stub` is a headless task controller on the stack's server base (version 4,
+pools parsed at that version) that sends set-value, request and measurement commands from
+stdin and reports every value the implement sends; `tests/scenario_rates.py` drives the
+sprayer with it on `vcan0`, in CI too: the actual reaches 147 l/ha in 4.3 s (five time
+constants), a 200 l/ha setpoint is followed and the pressure goes to 4.7 bar, 900 l/ha is
+clipped to the profile's 400, prescription control off hands over to the operator's rate,
+and one simulated hectare at 12 km/h gives 10 001 m², 150.0 l applied, the tank down by the
+same, with the task controller reading the totals within 2 %. No open task controller sends
+a rate yet; this is the tool until one does.
+
 ## 9. Who uses it
 
 | Project | For |

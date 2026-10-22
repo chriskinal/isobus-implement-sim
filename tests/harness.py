@@ -321,3 +321,64 @@ class VtStub:
         except subprocess.TimeoutExpired:
             self.proc.kill()
         self.poll()
+
+
+class TcStub:
+    """tools/tc_stub: a headless task controller on a SocketCAN interface. Events are JSON lines
+    on stdout; it takes set, request, interval, threshold, totals and quit on stdin."""
+
+    def __init__(self, binary, iface):
+        self.proc = subprocess.Popen([binary, "--interface", iface], stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        os.set_blocking(self.proc.stdout.fileno(), False)
+        os.set_blocking(self.proc.stderr.fileno(), False)
+        self.buf = b""
+        self.err = b""
+        self.events = []
+        self.client = None  # the last "client" event with activated true
+        self.values = {}  # (ddi, element) -> last value reported by the implement
+
+    def poll(self):
+        r, _, _ = select.select([self.proc.stdout, self.proc.stderr], [], [], 0)
+        if self.proc.stderr in r:
+            self.err += self.proc.stderr.read() or b""
+        if self.proc.stdout in r:
+            self.buf += self.proc.stdout.read() or b""
+            while b"\n" in self.buf:
+                line, self.buf = self.buf.split(b"\n", 1)
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                self.events.append(e)
+                if e["event"] == "client" and e.get("activated"):
+                    self.client = e
+                elif e["event"] == "value":
+                    self.values[(e["ddi"], e["element"])] = e["value"]
+
+    def send(self, command):
+        self.proc.stdin.write((command + "\n").encode())
+        self.proc.stdin.flush()
+
+    def element_for(self, ddi):
+        """The first element number that has this DDI as process data, from the client's DDOP."""
+        if not self.client:
+            return None
+        for pd in self.client["processData"]:
+            if pd["ddi"] == ddi:
+                return pd["element"]
+        return None
+
+    def find(self, event, since=0, **match):
+        return [e for e in self.events[since:] if e["event"] == event and all(e.get(k) == v for k, v in match.items())]
+
+    def stop(self):
+        try:
+            self.send("quit")
+        except (OSError, ValueError):
+            pass
+        try:
+            self.proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+        self.poll()

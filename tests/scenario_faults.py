@@ -134,6 +134,7 @@ def main():
         t = wait(120.0, lambda: imp.find("vt", since=n, connected=True))
         check(t is not None, "a 240 kB pool uploads and the terminal connects (%s)" % ("%.1f s" % t if t else "never"))
         pools = vt.find("pool", since=nv)
+        wait(10.0, lambda: any(s2["bytes"] >= 39826 + 200 * 1024 for s2 in vt.find("saveVersion", since=nv)))
         saved = [s2["bytes"] for s2 in vt.find("saveVersion", since=nv)]
         check(saved and max(saved) >= 39826 + 200 * 1024, "the terminal stored the padded pool: %s bytes" % saved)
         note("  terminal pool events: %s" % ", ".join(p["state"] for p in pools))
@@ -148,7 +149,8 @@ def main():
         tc_notes(("Failed", "fail", "error", "Error", "activat", "registered", "deserializ"), limit=8)
         check(tc.proc.poll() is None, "the task controller is still running")
         n = len(imp.events)
-        imp.send("fault restart")
+        e = imp.send("fault restart", timeout=15.0)
+        check(e is not None, "fault restart answers after the bad DDOP")
         t = wait(45.0, lambda: imp.find("tc", since=n, connected=True))
         check(t is not None, "after a restart with the good DDOP the task controller takes it back")
         sections_follow(0b101010101010, 6.0, "after the bad DDOP")

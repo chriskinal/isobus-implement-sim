@@ -15,7 +15,7 @@ jobs:
       - name: Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build can-utils
+          sudo apt-get install -y cmake ninja-build can-utils gdb
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
@@ -66,6 +66,8 @@ jobs:
       - name: Phases 1 and 2. Every profile against AOG-TaskController on vcan0
         run: python3 tests/scenario_tc.py --tc aog-tc/build/AOG-TaskController --implement build/implement --iface vcan0 --keep-log phase1-tc.log
       - name: Phase 4. The faults, against AOG-TaskController and the headless terminal
+        env:
+          HARNESS_GDB: 1  # a command the implement does not answer gets every thread's backtrace
         run: python3 tests/scenario_faults.py --tc aog-tc/build/AOG-TaskController --implement build/implement --stub build/vt_stub --iface vcan0
       - name: Keep the task controller's log
         if: always()

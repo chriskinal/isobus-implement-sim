@@ -154,6 +154,7 @@ def main():
     ap.add_argument("--iface", default="vcan0")
     ap.add_argument("--profiles", default="profiles")
     ap.add_argument("--only", nargs="*", help="profile names to run, e.g. planter-12 sprayer-24")
+    ap.add_argument("--keep-log", help="copy the task controller's log here at the end")
     args = ap.parse_args()
 
     for binary in (args.tc, args.implement):
@@ -307,9 +308,15 @@ def main():
             # The task controller notices the implement is gone before the next one
             t = run(20.0, until=lambda: app.status is not None and app.status[1] == 0)
             check(t is not None, "TC drops the implement (%s)" % ("%.1f s" % t if t else "never"))
-            tc_lines()
+            late = [l for l in tc_lines() if "[Timing]" in l]
+            if late:
+                worst = max(late, key=lambda l: int(l.split("gap ")[1].split(" ")[0]) if "gap " in l else 0)
+                note("  TC loop late %d times; worst: %s" % (len(late), worst.split("] ", 1)[-1].strip()))
     finally:
         tc.stop()
+    if args.keep_log:
+        import shutil
+        shutil.copy(tc.logpath, args.keep_log)
     failed = [w for c, w in results if not c]
     print("PASS" if ok else "FAILED: %d of %d checks (TC log: %s)" % (len(failed), len(results), tc.logpath))
     return 0 if ok else 1

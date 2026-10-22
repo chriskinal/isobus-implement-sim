@@ -30,7 +30,10 @@ jobs:
             sudo modprobe vcan
           fi
           sudo ip link add vcan0 type vcan
+          # A burst of frames on a vcan with a short queue fails with ENOBUFS and is lost
+          sudo ip link set vcan0 txqueuelen 1000
           sudo ip link set vcan0 up
+          ip -details link show vcan0
       - name: Phase 0. The seeder example claims an address on vcan0
         run: tests/phase0_vcan.sh build/seeder_example/SeederExample vcan0
       - name: AOG-TaskController source
@@ -51,4 +54,11 @@ jobs:
           cmake -S aog-tc -B aog-tc/build -G Ninja -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release -Wno-dev
           cmake --build aog-tc/build --target AOG-TaskController
       - name: Phase 1. Every profile against AOG-TaskController on vcan0
-        run: python3 tests/phase1_tc.py --tc aog-tc/build/AOG-TaskController --implement build/implement --iface vcan0
+        run: python3 tests/phase1_tc.py --tc aog-tc/build/AOG-TaskController --implement build/implement --iface vcan0 --keep-log phase1-tc.log
+      - name: Keep the task controller's log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase1-tc-log-${{ matrix.os }}
+          path: phase1-tc.log
+          if-no-files-found: ignore

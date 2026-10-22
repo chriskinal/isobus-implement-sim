@@ -1,6 +1,6 @@
 // implement: one simulated ISOBUS implement from a profile (docs/PLAN.md).
 //
-//   implement --profile profiles/sprayer-24.json [--interface vcan0] [--driver socketcan|virtual]
+//   implement --profile profiles/sprayer-24.json [--interface vcan0] [--driver socketcan|virtual|peak]
 //             [--port 0|<n>] [--pool <file.iop>] [--section-control setpoint|actualSettable|perElement]
 //             [--log debug|info|warn|error]
 //
@@ -67,7 +67,7 @@ namespace
 	void usage()
 	{
 		std::fprintf(stderr,
-		             "usage: implement --profile <file> [--interface vcan0] [--driver socketcan|virtual] [--port 0|<n>] [--pool <file.iop>]\n"
+		             "usage: implement --profile <file> [--interface vcan0] [--driver socketcan|virtual|peak] [--port 0|<n>] [--pool <file.iop>]\n"
 		             "                 [--section-control setpoint|actualSettable|perElement] [--log debug|info|warn|error]\n");
 	}
 }

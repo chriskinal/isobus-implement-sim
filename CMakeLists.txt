@@ -18,7 +18,9 @@ if(NOT CAN_DRIVER)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(CAN_DRIVER "SocketCAN;VirtualCAN")
   else()
-    set(CAN_DRIVER "VirtualCAN")
+    # The stack bundles UV Software's MacCAN PCBUSB library (its own EULA, not MIT): a PEAK
+    # PCAN-USB on the Mac, `--driver peak --interface 1`. Local builds only; releases are Linux.
+    set(CAN_DRIVER "MacCANPCAN;VirtualCAN")
   endif()
 endif()
 

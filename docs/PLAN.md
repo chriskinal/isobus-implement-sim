@@ -327,6 +327,15 @@ a profile from a tarball. `v0.1.0` went out before phase 6 and the by-hand check
 and 7, so that the CI pin move and the stack patch have a release behind them; the next
 release follows those.
 
+**Hardware note (2026-10-22).** A PEAK PCAN-USB (0c72:000c, product string "XCAN-USB") on this
+Mac: OrbStack's USB passthrough shows it to the Linux machine, but the OrbStack kernel ships
+only `can_dev`, `vcan` and `gs_usb`, with no headers to build `peak_usb`, so it gets no `can0`
+there; a candleLight-class adapter would. On macOS the stack's MacCAN PCAN driver (UV
+Software's PCBUSB library, bundled by the stack under its own EULA) opens it at 250 kbit/s:
+`build/implement --driver peak --interface 1`, now the macOS default build. That is the
+bench setup for a real terminal or task controller; the by-hand checks of phases 3 and 7 can
+use it.
+
 ## 9. Who uses it
 
 | Project | For |

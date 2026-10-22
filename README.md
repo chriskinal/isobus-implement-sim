@@ -26,7 +26,8 @@ and [docs/SPRAYER.md](docs/SPRAYER.md); the shipped profiles are in `profiles/`,
 build/implement --profile profiles/sprayer-24.json --interface vcan0
 ```
 
-Options: `--driver virtual` for the stack's in-process bus (the only one on macOS),
+Options: `--driver virtual` for the stack's in-process bus, `--driver peak --interface 1` for a
+PEAK PCAN-USB on macOS (the stack's MacCAN driver; the first channel is 1),
 `--port 0` (or a number) to take commands on a local TCP port as well as stdin, `--pool <file.iop>`
 to show another pool than the profile's (one extracted from a capture, or `pools/aux_functions.iop`),
 `--section-control setpoint|actualSettable|perElement` to override the profile's section
@@ -90,7 +91,10 @@ cmake --build build
 ```
 
 Linux builds the stack with SocketCAN and the virtual driver; macOS with the virtual driver
-only, enough to compile and to run a binary with `--driver virtual`. The fetched stack carries
+and the stack's MacCAN PCAN driver, so a PEAK PCAN-USB plugged into the Mac works with
+`--driver peak` (the MacCAN library has UV Software's EULA, so it stays a local build and is
+not in the release tarballs). OrbStack's Linux kernel has no `peak_usb`, only `gs_usb`, so a
+PEAK adapter passed through to a machine there gets no `can0`; a candleLight-class adapter would. The fetched stack carries
 one patch, `cmake/agisostack-restart-races.patch`: its TC and VT clients let one caller at a
 time join the worker thread in `terminate()`, and its network manager copies its control
 function lists under their mutex before walking them, so that a restart on another thread

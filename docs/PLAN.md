@@ -226,7 +226,12 @@ label cut to 7 characters the client asks with Get Versions (0xE0), the terminal
 the 39 kB pool goes up over ETP in 10 s, "Stored object pool with no error", connected at
 11 s, version 4 reported. Seen from the PC: the no-speed alarm 10 s later, acknowledged with
 the soft key from the terminal (the key event came back), `speed 12` clearing it, sections
-switched by command, the settings mask and back, the no-task-controller alarm. Two findings
+switched by command, the settings mask and back, the no-task-controller alarm. From the
+terminal's side, confirmed by the operator at the PC and matched by the events: both alarms
+seen and acknowledged there, the statistics selection changed, auto/manual toggled (auto with
+no task controller took every section off, manual brought the switches back), and single
+sections toggled from the screen, each one a `key` event and a changed `sections` event
+within the same second. Phase 3's by-hand check is done. Two findings
 for upstream: AgIsoVirtualTerminal does not answer Extended Get Versions, and the stack's
 client has no fallback when the versions query goes unanswered, so every example client in
 the stack (same hash label) meets the same wall against that terminal. `implement --trace`

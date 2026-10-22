@@ -270,6 +270,15 @@ driven from stdin. `tests/scenario_aux.py` checks that both reach `vt_stub` and 
 joystick takes its inputs; the stack's VT server base has no AUX-N, so the assignment itself,
 "made on a terminal, stored and used", is checked by hand on AgIsoVirtualTerminal.
 
+**Phase 8 record (2026-10-22).** The packaging is built; the first release is not cut.
+`package.sh` makes `dist/isobus-implement-sim-<version>-linux-<arch>.tar.gz` from a build:
+the five binaries, profiles, pools, the scenario harness, the documents and a `RELEASE.md`
+with the three lines to start; `.github/workflows/release.yml` runs it on both runners for a
+`v*` tag and uploads to the GitHub release. Profile documentation is MODEL.md section 10 and
+the profile tables of SEEDER.md and SPRAYER.md. Done when someone outside the project has run
+a profile from a tarball; cut `v0.1.0` for that once phase 6 or the by-hand checks of phases 3
+and 7 are in.
+
 ## 9. Who uses it
 
 | Project | For |

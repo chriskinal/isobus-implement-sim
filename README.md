@@ -63,6 +63,13 @@ that takes any DDOP, sends set-value, request and measurement commands from stdi
 every value the implement reports. `build/aux_input --interface vcan0` is a joystick with a
 button and a slider for AUX-N, driven from stdin.
 
+## Releases
+
+A tag `v*` builds release tarballs for Linux x64 and arm64 (`.github/workflows/release.yml`):
+the binaries, the profiles, the pools, the scenario harness and the documents, with a
+`RELEASE.md` that says how to start. `./package.sh build v0.1.0` makes the same tarball from a
+local build.
+
 ## Tests
 
 `ctest --test-dir build` runs the model and DDOP tests without a bus.

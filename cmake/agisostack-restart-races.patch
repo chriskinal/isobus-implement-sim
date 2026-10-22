@@ -1,0 +1,146 @@
+diff --git a/isobus/include/isobus/isobus/isobus_task_controller_client.hpp b/isobus/include/isobus/isobus/isobus_task_controller_client.hpp
+index 4323455..892061e 100644
+--- a/isobus/include/isobus/isobus/isobus_task_controller_client.hpp
++++ b/isobus/include/isobus/isobus/isobus_task_controller_client.hpp
+@@ -17,6 +17,7 @@
+ 
+ #include <list>
+ #if !defined CAN_STACK_DISABLE_THREADS && !defined ARDUINO
++#include <atomic>
+ #include <thread>
+ #endif
+ 
+@@ -720,7 +721,8 @@ namespace isobus
+ 		std::list<ProcessDataCallbackInfo> measurementOnChangeThresholdCommands; ///< A list of measurement commands that will be processed when the value changes by the specified amount
+ 		Mutex clientMutex; ///< A general mutex to protect data in the worker thread against data accessed by the app or the network manager
+ #if !defined CAN_STACK_DISABLE_THREADS && !defined ARDUINO
+-		std::thread *workerThread = nullptr; ///< The worker thread that updates this interface
++		std::atomic<std::thread *> workerThread{ nullptr }; ///< The worker thread that updates this interface
++		Mutex workerThreadMutex; ///< Lets one terminate() caller at a time join the worker thread
+ #endif
+ 		std::string ddopStructureLabel; ///< Stores a pre-parsed structure label, helps to avoid processing the whole DDOP during a CAN message callback
+ 		std::string previousStructureLabel; ///< Stores the last structure label we used, helps to warn the user if they aren't updating the label properly
+diff --git a/isobus/include/isobus/isobus/isobus_virtual_terminal_client.hpp b/isobus/include/isobus/isobus/isobus_virtual_terminal_client.hpp
+index c3166fe..66a30a5 100644
+--- a/isobus/include/isobus/isobus/isobus_virtual_terminal_client.hpp
++++ b/isobus/include/isobus/isobus/isobus_virtual_terminal_client.hpp
+@@ -24,6 +24,7 @@
+ #include <vector>
+ 
+ #if !defined CAN_STACK_DISABLE_THREADS && !defined ARDUINO
++#include <atomic>
+ #include <thread>
+ #endif
+ 
+@@ -1650,7 +1651,8 @@ namespace isobus
+ 		std::uint16_t ourModelIdentificationCode = 1; ///< The model identification code of this input device
+ 		std::map<std::uint16_t, AuxiliaryInputState> ourAuxiliaryInputs; ///< The inputs on this auxiliary input device
+ #if !defined CAN_STACK_DISABLE_THREADS && !defined ARDUINO
+-		std::thread *workerThread = nullptr; ///< The worker thread that updates this interface
++		std::atomic<std::thread *> workerThread{ nullptr }; ///< The worker thread that updates this interface
++		Mutex workerThreadMutex; ///< Lets one terminate() caller at a time join the worker thread
+ #endif
+ 		bool firstTimeInState = false; ///< Stores if the current update cycle is the first time a state machine state has been processed
+ 		bool initialized = false; ///< Stores the client initialization state
+diff --git a/isobus/src/can_network_manager.cpp b/isobus/src/can_network_manager.cpp
+index 30dca15..7836b43 100644
+--- a/isobus/src/can_network_manager.cpp
++++ b/isobus/src/can_network_manager.cpp
+@@ -997,7 +997,14 @@ namespace isobus
+ 
+ 	void CANNetworkManager::process_can_message_for_address_violations(const CANMessage &currentMessage)
+ 	{
+-		for (const auto &internalCF : internalControlFunctions)
++		// A copy, as for the global PGN callbacks: deactivate_control_function() erases from the list
++		// under controlFunctionsMutex, possibly on another thread, and a node this loop stands on may go.
++		std::list<std::shared_ptr<InternalControlFunction>> internalControlFunctionsCopy;
++		{
++			LOCK_GUARD(Mutex, controlFunctionsMutex);
++			internalControlFunctionsCopy = internalControlFunctions;
++		}
++		for (const auto &internalCF : internalControlFunctionsCopy)
+ 		{
+ 			if ((nullptr != internalCF) &&
+ 			    internalCF->process_rx_message_for_address_violation(currentMessage))
+@@ -1059,8 +1066,14 @@ namespace isobus
+ 		}
+ 		else if ((messageDestination != nullptr) && (messageDestination->get_type() == ControlFunction::Type::Internal))
+ 		{
+-			// Message is destined to us
+-			for (const auto &partner : partneredControlFunctions)
++			// Message is destined to us. A copy, as above: deactivate_control_function() erases from the
++			// list under controlFunctionsMutex, possibly on another thread, while this loop walks it.
++			std::list<std::shared_ptr<PartneredControlFunction>> partnersCopy;
++			{
++				LOCK_GUARD(Mutex, controlFunctionsMutex);
++				partnersCopy = partneredControlFunctions;
++			}
++			for (const auto &partner : partnersCopy)
+ 			{
+ 				if ((nullptr != partner) &&
+ 				    (partner->get_can_port() == message.get_can_port_index()) &&
+diff --git a/isobus/src/isobus_task_controller_client.cpp b/isobus/src/isobus_task_controller_client.cpp
+index cbe5733..08b2557 100644
+--- a/isobus/src/isobus_task_controller_client.cpp
++++ b/isobus/src/isobus_task_controller_client.cpp
+@@ -268,11 +268,23 @@ namespace isobus
+ 			shouldTerminate = true;
+ 
+ #if !defined CAN_STACK_DISABLE_THREADS && !defined ARDUINO
+-			if ((nullptr != workerThread) && (workerThread->get_id() != std::this_thread::get_id()))
+-			{
+-				workerThread->join();
+-				delete workerThread;
+-				workerThread = nullptr;
++			// One caller at a time joins the worker. terminate() also runs on the client's own error paths
++			// (from a PGN callback on the hardware update thread) and may coincide with the owner's
++			// call: a second join on a thread the first caller has joined and freed never returns, and a
++			// caller that skipped the join would return to an owner that destroys the client while the
++			// first caller is still inside it. The worker itself never joins (it exits after this update)
++			// and never waits here, or it could not exit while the owner joins it.
++			std::thread *thread = workerThread.load();
++			if ((nullptr != thread) && (thread->get_id() != std::this_thread::get_id()))
++			{
++				LOCK_GUARD(Mutex, workerThreadMutex);
++				thread = workerThread.load();
++				if (nullptr != thread)
++				{
++					thread->join();
++					delete thread;
++					workerThread = nullptr;
++				}
+ 			}
+ #endif
+ 		}
+diff --git a/isobus/src/isobus_virtual_terminal_client.cpp b/isobus/src/isobus_virtual_terminal_client.cpp
+index d93a9be..13a73a8 100644
+--- a/isobus/src/isobus_virtual_terminal_client.cpp
++++ b/isobus/src/isobus_virtual_terminal_client.cpp
+@@ -112,11 +112,23 @@ namespace isobus
+ 
+ 			shouldTerminate = true;
+ #if !defined CAN_STACK_DISABLE_THREADS && !defined ARDUINO
+-			if (nullptr != workerThread)
++			// One caller at a time joins the worker. terminate() also runs on the client's own error paths
++			// (from a PGN callback on the hardware update thread) and may coincide with the owner's
++			// call: a second join on a thread the first caller has joined and freed never returns, and a
++			// caller that skipped the join would return to an owner that destroys the client while the
++			// first caller is still inside it. The worker itself never joins (it exits after this update)
++			// and never waits here, or it could not exit while the owner joins it.
++			std::thread *thread = workerThread.load();
++			if ((nullptr != thread) && (thread->get_id() != std::this_thread::get_id()))
+ 			{
+-				workerThread->join();
+-				delete workerThread;
+-				workerThread = nullptr;
++				LOCK_GUARD(Mutex, workerThreadMutex);
++				thread = workerThread.load();
++				if (nullptr != thread)
++				{
++					thread->join();
++					delete thread;
++					workerThread = nullptr;
++				}
+ 			}
+ #endif
+ 			initialized = false;

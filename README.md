@@ -89,7 +89,12 @@ cmake --build build
 ```
 
 Linux builds the stack with SocketCAN and the virtual driver; macOS with the virtual driver
-only, enough to compile and to run a binary with `--driver virtual`. To see the seeder example
+only, enough to compile and to run a binary with `--driver virtual`. The fetched stack carries
+one patch, `cmake/agisostack-restart-races.patch`: its TC and VT clients let one caller at a
+time join the worker thread in `terminate()`, and its network manager copies its control
+function lists under their mutex before walking them, so that a restart on another thread
+during the stack's own termination after a rejected DDOP neither hangs nor crashes (PLAN.md,
+phase 4 record). To see the seeder example
 claim an address on a virtual bus (what CI checks):
 
 ```sh

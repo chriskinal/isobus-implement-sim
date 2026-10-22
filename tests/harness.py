@@ -143,6 +143,10 @@ class Implement:
                 if e["event"] == "command" and e.get("command") == command:
                     return e
             time.sleep(0.005)
+        if self.proc.poll() is not None:
+            self.poll()
+            tail = self.err.decode(errors="replace").strip().splitlines()[-6:]
+            print("note  the implement exited with code %s while %r waited; its last stderr lines: %s" % (self.proc.returncode, command, tail), flush=True)
         if os.environ.get("HARNESS_GDB") and self.proc.poll() is None:
             # No answer: every thread's backtrace, for a hang in the implement (needs gdb and ptrace rights)
             out = subprocess.run(["sudo", "gdb", "-p", str(self.proc.pid), "-batch", "-ex", "thread apply all bt 16"],

@@ -156,8 +156,10 @@ namespace sim
 		events.emit("restart", { { "count", restarts }, { "phase", "leaving" } });
 		if (client)
 		{
+			// The stack terminates the client itself when the task controller rejects the DDOP, from
+			// a PGN callback; terminate() serialises the two callers (cmake/agisostack-restart-races.patch)
+			// and the old client is destroyed only after the pause below, when that callback is done with it.
 			client->terminate();
-			client.reset();
 		}
 		events.emit("restart", { { "count", restarts }, { "phase", "clientStopped" } });
 		speed.reset();
@@ -176,6 +178,7 @@ namespace sim
 		lastState = -1;
 		lastAddress = 0xFF;
 		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		client.reset();
 		connect();
 		events.emit("restart", { { "count", restarts }, { "phase", "rejoining" } });
 		return ecu;

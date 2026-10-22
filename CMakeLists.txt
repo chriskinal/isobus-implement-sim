@@ -25,9 +25,18 @@ endif()
 include(FetchContent)
 set(BUILD_EXAMPLES OFF)
 set(BUILD_TESTING OFF)
+# cmake/agisostack-restart-races.patch, two races a restart from another thread meets in the
+# stack (PLAN.md phase 4 record): TaskControllerClient::terminate() and
+# VirtualTerminalClient::terminate() join the worker thread one caller at a time, since the stack
+# terminates itself on its error paths (a rejected DDOP, for one) from the hardware update thread
+# and an owner that calls terminate() in that window joined the same thread a second time and never
+# returned; and the network manager copies its partner and internal control function lists under
+# their mutex before walking them, since deactivate_control_function() erases from them under that
+# mutex while the walk did without it.
 FetchContent_Declare(agisostack
   GIT_REPOSITORY https://github.com/Open-Agriculture/AgIsoStack-plus-plus.git
-  GIT_TAG ${AGISOSTACK_GIT_TAG})
+  GIT_TAG ${AGISOSTACK_GIT_TAG}
+  PATCH_COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=<SOURCE_DIR> -DPATCH=${CMAKE_CURRENT_SOURCE_DIR}/cmake/agisostack-restart-races.patch -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply_patch.cmake)
 FetchContent_MakeAvailable(agisostack)
 
 # Phase 0 (PLAN.md section 8): the stack's seeder example, built unchanged from the fetched

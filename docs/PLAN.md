@@ -238,9 +238,33 @@ second identity. `tests/scenario_faults.py` runs them all against AOG-TaskContro
   visible; sections followed 0.3 s later. An earlier version of this fault sent the
   implement's own NAME from that address, which the task controller's stack read as the
   implement moving to its own address and lost it: an address change, not a conflict.
-- Once, in one run of four, the implement stopped answering commands after a restart that
-  followed the bad DDOP; the run with `HARNESS_GDB=1` (the harness attaches gdb to a silent
-  implement) did not reproduce it. Open item.
+- The implement sometimes stopped answering commands after a restart that followed the bad
+  DDOP: once in four runs here, every run on both GitHub runners. The backtraces the harness
+  takes with `HARNESS_GDB=1` showed the command thread inside the stack's
+  `TaskControllerClient::terminate()`, in `pthread_join`, first waiting for the worker thread
+  (tid 3663, no longer in the process) and then for a tid of -1, which glibc writes when a
+  join has completed and freed the thread's descriptor. Two joins of one thread: when the
+  task controller rejects the DDOP, the stack sets Disconnected and calls `terminate()` on
+  itself from the PGN callback on the hardware update thread; the harness sees the
+  `disconnected` state and sends `fault restart`, which calls `terminate()` too, within the
+  50 ms the first join needs for the worker's sleep. Both callers see the worker pointer,
+  both join; the kernel wakes one, the other re-reads -1 and waits forever, and the main
+  loop waits on `sessionMutex` behind it. A first patch let exactly one caller join and the
+  other skip: the implement then died with a segmentation fault instead, the owner destroying
+  the client while the stack's own `terminate()` was still inside it. Fixed in
+  `cmake/agisostack-restart-races.patch`, applied to the fetched stack by FetchContent's
+  patch step: callers of `terminate()` take a mutex around the join, one at a time, so the
+  second returns once the first has joined and freed the worker; the worker itself never
+  waits there, or it could not exit while the owner joins it. TC and VT client alike. On our
+  side `restart()` destroys the old client only after its 300 ms pause.
+- With that in, the implement died instead, in one run of two, inside the hardware update
+  thread: `process_can_message_for_global_and_partner_callbacks` walking the network
+  manager's partner list while `restart()`, in its pause after `deactivate_control_function`,
+  had erased the task controller's partner from it. The erase takes `controlFunctionsMutex`;
+  the walk, and the one over the internal control functions in
+  `process_can_message_for_address_violations`, took nothing. The same patch copies both
+  lists under the mutex before walking them, as the stack already does for its global PGN
+  callbacks. Both races are the stack's; to raise upstream with AOG-TaskController's items.
 
 **Phase 5 record (2026-10-22).** Done. The model's rates follow their target with the
 product's time constant, within the machine's limit at the current speed (the planter's

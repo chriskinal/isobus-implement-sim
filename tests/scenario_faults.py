@@ -159,7 +159,10 @@ def main():
         e = imp.send("fault busoff 50")
         check(e and e["ok"], "fault busoff 50: %s frames written" % (e and e.get("sent")))
         sections_follow(0b111111111111, 6.0, "after the error frames")
-        check(tc.proc.poll() is None and vt.proc.poll() is None, "task controller and terminal still running")
+        check(tc.proc.poll() is None and vt.proc.poll() is None, "task controller and terminal still running (exit codes %s, %s)" % (tc.proc.poll(), vt.proc.poll()))
+        if vt.proc.poll() is not None:
+            vt.poll()
+            note("the terminal stub's last stderr lines: %s" % vt.err.decode(errors="replace").strip().splitlines()[-6:])
 
         # conflict: a second device claims the task controller's address; what each stack does is recorded
         n = len(imp.events)
@@ -180,7 +183,7 @@ def main():
             t = wait(45.0, lambda: imp.find("tc", since=n, connected=True))
             check(t is not None, "after a restart the task controller takes it back")
             sections_follow(0b000011110000, 6.0, "after the conflict and a restart")
-        check(tc.proc.poll() is None and vt.proc.poll() is None, "task controller and terminal still running at the end")
+        check(tc.proc.poll() is None and vt.proc.poll() is None, "task controller and terminal still running at the end (exit codes %s, %s)" % (tc.proc.poll(), vt.proc.poll()))
     finally:
         if imp:
             imp.stop()

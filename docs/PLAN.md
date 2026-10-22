@@ -224,7 +224,8 @@ Extended Get Versions (0xD3) because the 16-character hash label the stack's own
 client timed out, reset and tried again forever, never falling back to an upload. With the
 label cut to 7 characters the client asks with Get Versions (0xE0), the terminal answers,
 the 39 kB pool goes up over ETP in 10 s, "Stored object pool with no error", connected at
-11 s, version 4 reported. Seen from the PC: the no-speed alarm 10 s later, acknowledged with
+11 s, the terminal reporting VT version 6 (the event said 4 that evening: the enum's index,
+fixed since). Seen from the PC: the no-speed alarm 10 s later, acknowledged with
 the soft key from the terminal (the key event came back), `speed 12` clearing it, sections
 switched by command, the settings mask and back, the no-task-controller alarm. From the
 terminal's side, confirmed by the operator at the PC and matched by the events: both alarms
@@ -232,9 +233,13 @@ seen and acknowledged there, the statistics selection changed, auto/manual toggl
 no task controller took every section off, manual brought the switches back), and single
 sections toggled from the screen, each one a `key` event and a changed `sections` event
 within the same second. Phase 3's by-hand check is done. Two findings
-for upstream: AgIsoVirtualTerminal does not answer Extended Get Versions, and the stack's
-client has no fallback when the versions query goes unanswered, so every example client in
-the stack (same hash label) meets the same wall against that terminal. `implement --trace`
+for upstream, filed 2026-10-22: AgIsoVirtualTerminal 1.6.0 does not answer Extended Get
+Versions because its stack pin (1a037ee, 2026-10-07) predates the stack's #768 that added the
+command to server and client,
+[AgIsoVirtualTerminal #266](https://github.com/Open-Agriculture/AgIsoVirtualTerminal/issues/266);
+and the stack's client has no fallback when the versions query goes unanswered, so every
+example client in the stack (same hash label) meets the same wall against any terminal
+without the command, [AgIsoStack++ #799](https://github.com/Open-Agriculture/AgIsoStack-plus-plus/issues/799). `implement --trace`
 prints every frame in and out on stderr, candump style, which is what showed it.
 
 **Phase 4 record (2026-10-22).** Done. `src/fault_driver.cpp` wraps the CAN driver: `fault

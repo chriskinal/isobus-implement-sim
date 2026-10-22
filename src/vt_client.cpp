@@ -16,6 +16,21 @@ namespace sim
 	// labels), which AgIsoVirtualTerminal on the bench never answered, and the client then
 	// resets forever instead of uploading (PLAN.md phase 3 record). 7 bytes is the label every
 	// terminal from version 3 on stores.
+	// The terminal's VT version as its number (2 to 6), 0 when unknown; the enum's index is not it
+	static int vt_version_number(isobus::VirtualTerminalClient::VTVersion v)
+	{
+		using V = isobus::VirtualTerminalClient::VTVersion;
+		switch (v)
+		{
+			case V::Version2OrOlder: return 2;
+			case V::Version3: return 3;
+			case V::Version4: return 4;
+			case V::Version5: return 5;
+			case V::Version6: return 6;
+			default: return 0;
+		}
+	}
+
 	static std::string short_version_label(const std::vector<std::uint8_t> &pool)
 	{
 		return isobus::IOPFileInterface::hash_object_pool_to_version(pool.data(), pool.size()).substr(0, 7);
@@ -562,7 +577,7 @@ namespace sim
 			nlohmann::json fields = { { "connected", connected }, { "pool", true } };
 			if (connected)
 			{
-				fields["version"] = static_cast<int>(client->get_connected_vt_version());
+				fields["version"] = vt_version_number(client->get_connected_vt_version());
 				fields["address"] = vt->get_address();
 				fields["label"] = versionLabel;
 			}

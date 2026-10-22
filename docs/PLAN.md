@@ -80,11 +80,17 @@ Shipped profiles: the stack's seeder as it is; a 24 m sprayer with 12 sections; 
 (one section per row); a spreader with variable width; a two-boom machine. Each one is a test case
 for a task controller.
 
+Detailed plans (2026-10-22): the shared model in [MODEL.md](MODEL.md), the machines in
+[SEEDER.md](SEEDER.md) and [SPRAYER.md](SPRAYER.md). The two-boom machine is the seeder's
+`airseeder-12m`.
+
 ## 6. Commands and events
 
 **Commands** (one per line): `switch <section> on|off`, `master on|off`, `auto on|off`,
 `rate <value>`, `tank <level>`, `alarm <name>`, `alarm clear`, `key <softkey>`, `mask <id>`,
-`value <object> <n>`, `fault <name> [args]` (section 7), `status`, `quit`.
+`value <object> <n>`, `fault <name> [args]` (section 7), `status`, `quit`. Added by MODEL.md:
+`speed <km/h>` and `speed bus` for a bench with no tractor ECU; per-machine commands in
+SEEDER.md and SPRAYER.md section 7.
 
 **Events** (one JSON object per line): address claimed, TC connected or lost, DDOP accepted or
 rejected, section setpoints and actuals, rate setpoint and actual, VT connected, pool uploaded,

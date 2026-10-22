@@ -84,6 +84,11 @@ add_test(NAME model COMMAND test_model ${CMAKE_SOURCE_DIR}/profiles)
 add_executable(ddop_check tools/ddop_check.cpp)
 target_link_libraries(ddop_check PRIVATE isobus::Isobus isobus::Utility)
 
+# candump for the stack's drivers: raw frames on a PEAK adapter on the Mac, or any driver
+add_executable(can_sniff tools/can_sniff.cpp ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
+target_include_directories(can_sniff PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
+target_link_libraries(can_sniff PRIVATE isobus::Isobus isobus::HardwareIntegration isobus::Utility)
+
 # A headless virtual terminal server for the scenarios (phase 3)
 add_executable(vt_stub tools/vt_stub.cpp ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
 target_include_directories(vt_stub PRIVATE ${agisostack_SOURCE_DIR}/examples/common)

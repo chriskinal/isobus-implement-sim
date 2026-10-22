@@ -57,6 +57,13 @@ switch 3 off
 status
 ```
 
+`build/can_sniff [--driver peak|socketcan|virtual] [--interface 1|can0] [--seconds 10] [--probe]`
+is candump for the stack's drivers, for a Mac with a PEAK adapter: every frame received or sent,
+with PGN, source and destination and the names of the PGNs an implement meets, and a count line
+every second. `--probe` sends a request for address claim to every node after the first second,
+so a node on the bus has to show itself. The MacCAN driver reports no bus state, so a silent bus
+looks the same whether the frames were acknowledged or not; a sniffer on the other end settles that.
+
 `build/ddop_check <file.ddop>` parses a binary DDOP, such as one a task controller saved, and
 prints its element tree and any broken child references. `build/vt_stub --interface vcan0` is
 a headless virtual terminal for the scenarios: it takes the implement's pool and injects key

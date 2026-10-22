@@ -111,6 +111,10 @@ the press was ignored.
 
 ## 6. Screens
 
+*Phase 3 (2026-10-22): every profile shows `pools/base.iop`, the stack's seeder screen, with its
+behaviour (six section toggles, auto/manual, speed, the no-speed and no-task-controller alarms,
+statistics), until the pool below exists. See `pools/README.md`.*
+
 A new pool, ours, `pools/sprayer.iop`, made in AgIsoTerminalDesigner in the style of the
 stack's seeder pool so the two look like one family. 480 × 480 data mask, 80 px soft keys.
 

@@ -11,6 +11,7 @@
 #include "model.hpp"
 #include "profile.hpp"
 #include "tc_client.hpp"
+#include "vt_client.hpp"
 
 #include "create_can_driver.hpp"
 #include "isobus/isobus/can_stack_logger.hpp"
@@ -162,7 +163,13 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	// The terminal client, if the profile's pool is there
+	const auto slash = profilePath.find_last_of('/');
+	sim::TerminalClient terminal(profile, model, modelMutex, events, client);
+	terminal.start(client.control_function(), slash == std::string::npos ? "." : profilePath.substr(0, slash));
+
 	sim::CommandServer commands(profile, model, modelMutex, events, client, running);
+	commands.set_terminal(&terminal);
 	if (!commands.start(port))
 	{
 		std::fprintf(stderr, "could not listen on port %d\n", port);
@@ -181,8 +188,10 @@ int main(int argc, char **argv)
 			model.tick(events.now_ms());
 		}
 		client.update();
+		terminal.update();
 	}
 	commands.stop();
+	terminal.stop();
 	client.stop();
 	events.emit("exit");
 	return 0;

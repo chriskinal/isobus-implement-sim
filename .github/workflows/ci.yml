@@ -57,6 +57,8 @@ jobs:
           cmake --build aog-tc/build --target AOG-TaskController
       - name: Phase 2. Commands and events on the virtual driver, no bus
         run: python3 tests/scenario_commands.py build/implement profiles
+      - name: Phase 3. The screens on a headless terminal on vcan0
+        run: python3 tests/scenario_vt.py build/implement build/vt_stub vcan0
       - name: Phases 1 and 2. Every profile against AOG-TaskController on vcan0
         run: python3 tests/scenario_tc.py --tc aog-tc/build/AOG-TaskController --implement build/implement --iface vcan0 --keep-log phase1-tc.log
       - name: Keep the task controller's log

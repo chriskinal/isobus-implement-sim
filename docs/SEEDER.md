@@ -120,6 +120,10 @@ independent section sets with one product each.
 
 ## 6. Screens
 
+*Phase 3 (2026-10-22): every profile shows `pools/base.iop`, the stack's seeder screen, with its
+behaviour (six section toggles, auto/manual, speed, the no-speed and no-task-controller alarms,
+statistics), until the pool below exists. See `pools/README.md`.*
+
 Start from the stack's `BasePool.iop` (MIT, in `examples/seeder_example`), edited in
 AgIsoTerminalDesigner into `pools/seeder.iop`, ours to ship. Its masks stay: main run screen,
 statistics (bus, terminal and task controller numbers), settings, alarms, and the two alarm

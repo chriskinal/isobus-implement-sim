@@ -20,5 +20,5 @@
       "bin": { "unit": "kg", "capacity": 3000, "level": 3000, "low": 0.05 } }
   ],
   "seeder": { "kind": "drill", "rowData": false, "meter": { "maxSpeed": 12 } },
-  "pool": "pools/seeder.iop"
+  "pool": "pools/base.iop"
 }

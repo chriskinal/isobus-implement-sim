@@ -28,5 +28,5 @@
     "pressure": { "min": 1.0, "max": 6.0 },
     "rateStep": 0.1
   },
-  "pool": "pools/sprayer.iop"
+  "pool": "pools/base.iop"
 }

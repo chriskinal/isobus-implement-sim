@@ -21,5 +21,5 @@
     "singulation": { "base": 0.985, "knee": 10, "slope": 0.01, "walk": 0.003 },
     "depth": { "setpoint": 50, "min": 20, "max": 90 }
   },
-  "pool": "pools/seeder.iop"
+  "pool": "pools/base.iop"
 }

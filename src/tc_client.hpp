@@ -38,6 +38,12 @@ namespace sim
 		bool connected() const { return lastConnected; }
 		int address() const { return lastAddress; }
 		const char *state() const { return lastStateName; }
+		std::shared_ptr<isobus::InternalControlFunction> control_function() const { return ecu; }
+		std::uint32_t tc_address() const { return (tc && lastConnected) ? tc->get_address() : 0; }
+		std::uint32_t tc_booms() const { return (client && lastConnected) ? client->get_connected_tc_number_booms_supported() : 0; }
+		std::uint32_t tc_sections() const { return (client && lastConnected) ? client->get_connected_tc_number_sections_supported() : 0; }
+		std::uint32_t tc_channels() const { return (client && lastConnected) ? client->get_connected_tc_number_channels_supported() : 0; }
+		std::uint32_t tc_version() const { return (client && lastConnected) ? static_cast<std::uint32_t>(client->get_connected_tc_version()) : 0; }
 
 	private:
 		static bool request_value_callback(std::uint16_t element, std::uint16_t ddi, std::int32_t &value, void *parent);

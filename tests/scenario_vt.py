@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+"""Phase 3 (docs/PLAN.md): the implement's screens on a virtual terminal. tools/vt_stub plays a
+headless terminal on vcan0; the implement uploads the stack's seeder pool, a key pressed on the
+terminal arrives as an event and switches a section, an alarm shows and is acknowledged.
+
+    sudo modprobe vcan && sudo ip link add vcan0 type vcan && sudo ip link set vcan0 up
+    tests/scenario_vt.py [build-linux/implement] [build-linux/vt_stub] [vcan0]
+"""
+import os
+import sys
+import time
+
+sys.path.insert(0, os.path.dirname(__file__))
+from harness import Implement, VtStub, check, note, summary  # noqa: E402
+
+# pools/base_pool_ids.hpp
+MAIN_MASK, SETTINGS_MASK, ALARMS_MASK = 1000, 1002, 1003
+NO_SPEED_MASK, NO_TC_MASK = 2000, 2001
+SECTION1_BUTTON, AUTO_MANUAL_BUTTON = 6000, 6006
+SETTINGS_KEY, HOME_KEY = 5002, 5000
+STATISTICS_SELECTION = 21001
+
+
+def main():
+    implement = sys.argv[1] if len(sys.argv) > 1 else "build-linux/implement"
+    stub = sys.argv[2] if len(sys.argv) > 2 else "build-linux/vt_stub"
+    iface = sys.argv[3] if len(sys.argv) > 3 else "vcan0"
+    profiles = "profiles"
+
+    vt = VtStub(stub, iface)
+    imp = None
+    try:
+        t = wait(vt, None, 10.0, lambda: vt.find("ready"))
+        check(t is not None, "vt_stub up on %s" % iface)
+
+        imp = Implement(implement, os.path.join(profiles, "planter-12.json"), iface=iface)
+        t = wait(vt, imp, 40.0, lambda: vt.pool == "loaded")
+        check(t is not None, "the pool reaches the terminal and parses (%s)" % ("%.1f s" % t if t else vt.pool))
+        t = wait(vt, imp, 10.0, lambda: imp.find("vt", connected=True))
+        check(t is not None, "the implement reports the terminal connected")
+        t = wait(vt, imp, 5.0, lambda: vt.mask == MAIN_MASK)
+        check(t is not None, "the run screen is the active mask (%s)" % vt.mask)
+
+        # A button on the terminal switches a section: manual mode first, so switches show
+        imp.send("auto off")
+        t = wait(vt, imp, 2.0, lambda: imp.actual() == "1" * 12)
+        check(t is not None, "manual: all sections on (%s)" % imp.actual())
+        n = len(imp.events)
+        vt.send("button %d" % SECTION1_BUTTON)
+        t = wait(vt, imp, 3.0, lambda: imp.find("key", since=n, id=SECTION1_BUTTON, code="released"))
+        check(t is not None, "the section 1 button press arrives as a key event")
+        t = wait(vt, imp, 2.0, lambda: imp.actual() == "0" + "1" * 11)
+        check(t is not None, "and switches section 1 off (%s)" % imp.actual())
+        vt.send("button %d" % AUTO_MANUAL_BUTTON)
+        t = wait(vt, imp, 3.0, lambda: imp.find("mode", since=n, auto=True))
+        check(t is not None, "the auto/manual button puts the implement in auto")
+        imp.send("auto off")
+
+        # A soft key changes the mask; the terminal sees it
+        vt.send("key %d" % SETTINGS_KEY)
+        t = wait(vt, imp, 3.0, lambda: vt.mask == SETTINGS_MASK)
+        check(t is not None, "the settings soft key shows the settings mask (%s)" % vt.mask)
+        e = imp.send("mask %d" % MAIN_MASK)
+        t = wait(vt, imp, 3.0, lambda: vt.mask == MAIN_MASK)
+        check(e and e["ok"] and t is not None, "mask command: back to the run screen")
+
+        # No speed for 10 s: the alarm raises on its own; the terminal acknowledges it
+        t = wait(vt, imp, 15.0, lambda: vt.mask == NO_SPEED_MASK)
+        check(t is not None, "no-speed alarm mask shows on its own (%s)" % vt.mask)
+        raised = imp.find("alarm", name="noSpeed", state="raised")
+        check(bool(raised), "alarm event raised")
+        vt.send("ack")
+        t = wait(vt, imp, 3.0, lambda: imp.find("alarm", name="noSpeed", state="acknowledged"))
+        check(t is not None, "acknowledged from the terminal")
+        t = wait(vt, imp, 3.0, lambda: vt.mask == MAIN_MASK)
+        check(t is not None, "back to the run screen after the acknowledge (%s)" % vt.mask)
+        imp.send("speed 10")
+        t = wait(vt, imp, 3.0, lambda: imp.find("alarm", name="noSpeed", state="cleared"))
+        check(t is not None, "speed back: alarm cleared")
+
+        # Forced alarm by command, cleared by command
+        e = imp.send("alarm noSpeed")
+        t = wait(vt, imp, 3.0, lambda: vt.mask == NO_SPEED_MASK)
+        check(e and e["ok"] and t is not None, "alarm noSpeed command shows the mask")
+        e = imp.send("alarm clear")
+        t = wait(vt, imp, 3.0, lambda: vt.mask == MAIN_MASK)
+        check(e and e["ok"] and t is not None, "alarm clear: run screen again")
+        e = imp.send("alarm bogus")
+        check(e and not e["ok"], "an unknown alarm is refused: %s" % (e and e.get("error")))
+
+        # A value entered on the terminal, and one sent to it
+        n = len(imp.events)
+        vt.send("value %d 2" % STATISTICS_SELECTION)
+        t = wait(vt, imp, 3.0, lambda: imp.find("value", since=n, id=STATISTICS_SELECTION, value=2))
+        check(t is not None, "a value entered on the terminal arrives as an event")
+        e = imp.send("value %d 1" % STATISTICS_SELECTION)
+        check(e and e["ok"], "value command accepted")
+        e = imp.send("key %d" % HOME_KEY)
+        check(e and e["ok"] and imp.find("key", id=HOME_KEY, source="command"), "key command acts as a press")
+
+        # The no-task-controller alarm after its 30 s
+        t = wait(vt, imp, 40.0, lambda: imp.find("alarm", name="noTaskController", state="raised"))
+        check(t is not None, "no-task-controller alarm after 30 s")
+        s = imp.status()
+        check(s and s["vt"]["connected"] and s["vt"]["mask"] == NO_TC_MASK, "status shows the terminal and its mask: %s" % (s and s.get("vt")))
+
+        # Speed on the screen: the readout value sent to the terminal
+        vals = vt.find("change", id=21012)
+        check(vals and vals[-1]["value"] == 2778, "speed readout sent to the terminal: %s" % (vals[-1]["value"] if vals else None))
+    finally:
+        if imp:
+            imp.stop()
+            if imp.proc.returncode not in (0, -2, None):
+                note("implement stderr: " + imp.err.decode(errors="replace")[-400:])
+        vt.stop()
+        if vt.proc.returncode not in (0, None):
+            note("vt_stub stderr: " + vt.err.decode(errors="replace")[-400:])
+    return summary()
+
+
+def wait(vt, imp, seconds, cond):
+    start = time.time()
+    while time.time() - start < seconds:
+        vt.poll()
+        if imp:
+            imp.poll()
+        if cond():
+            return time.time() - start
+        time.sleep(0.01)
+    return None
+
+
+if __name__ == "__main__":
+    sys.exit(main())

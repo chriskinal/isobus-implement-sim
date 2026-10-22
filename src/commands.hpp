@@ -6,6 +6,7 @@
 #include "model.hpp"
 #include "profile.hpp"
 #include "tc_client.hpp"
+#include "vt_client.hpp"
 
 #include <atomic>
 #include <map>
@@ -29,6 +30,7 @@ namespace sim
 
 		/// @brief Runs one command line. Thread-safe. The result is the "command" event.
 		void execute(const std::string &line, const std::string &from);
+		void set_terminal(TerminalClient *t) { terminal = t; }
 
 	private:
 		void io_loop();
@@ -41,6 +43,7 @@ namespace sim
 		std::mutex &modelMutex;
 		Events &events;
 		ImplementClient &client;
+		TerminalClient *terminal = nullptr;
 		std::atomic_bool &running;
 		std::mutex executeMutex;
 		std::thread thread;

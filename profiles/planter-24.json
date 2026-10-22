@@ -15,5 +15,5 @@
       "bin": { "unit": "seeds", "capacity": 3000000, "level": 3000000, "low": 0.05 } }
   ],
   "seeder": { "kind": "planter", "rowData": true, "meter": { "maxSpeed": 16 } },
-  "pool": "pools/seeder.iop"
+  "pool": "pools/base.iop"
 }

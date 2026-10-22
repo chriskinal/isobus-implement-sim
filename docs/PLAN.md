@@ -193,6 +193,19 @@ every event, and each command is answered with a `command` event. Built: `switch
 on the stack's virtual driver with no bus (runs on macOS too), and `tests/scenario_tc.py` is the
 phase 1 check as a scenario, with operator overrides through commands. Both run in CI.
 
+**Phase 3 record (2026-10-22).** Done against a headless terminal; a check against
+AgIsoVirtualTerminal on a desktop is still to be done by hand. `src/vt_client.cpp` loads the
+profile's pool, uploads it under a version label hashed from its bytes, and shows the stack's
+seeder screen with behaviour when the pool is `pools/base.iop` (MIT, shipped unchanged with its
+ID header): six section toggles, the auto/manual button, speed, the statistics numbers, the
+no-speed and no-task-controller alarms after the profile's seconds, acknowledged by the
+terminal's key number 0 or the acknowledge soft key. Any other `.iop` is shown as it is, keys
+and values still coming out as events. Commands `alarm`, `key`, `mask`, `value` and the `vt`,
+`mask`, `key`, `value` and `alarm` events. `tools/vt_stub` is a VT version 3 server on the
+stack's server base, 480 x 480, pools in memory, driven from stdin; `tests/scenario_vt.py`
+runs the planter against it on `vcan0`, in CI too. Every profile shows `base.iop` until the
+machines' own pools exist (SEEDER.md and SPRAYER.md section 6).
+
 ## 9. Who uses it
 
 | Project | For |

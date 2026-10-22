@@ -8,12 +8,14 @@ Each implement comes from a profile file (booms, sections, rates, screens), is d
 commands, reports what the system under test did as events, and can misbehave on demand: drop
 off the bus, restart, upload a new pool, answer late.
 
-**Status:** phase 2 of [docs/PLAN.md](docs/PLAN.md): a task controller client built from a
-profile, driven by commands. The DDOP comes from the profile's booms, sections and products;
-sections follow the task controller's setpoints after the profile's delay; commands arrive on
-stdin or a TCP port and events go out as JSON lines. No terminal client or faults yet. The
+**Status:** phase 3 of [docs/PLAN.md](docs/PLAN.md): a task controller client and a terminal
+client built from a profile, driven by commands. The DDOP comes from the profile's booms,
+sections and products; sections follow the task controller's setpoints after the profile's
+delay; the profile's pool goes to a terminal, with the stack's seeder screen behind it for now;
+commands arrive on stdin or a TCP port and events go out as JSON lines. No faults yet. The
 machines are described in [docs/MODEL.md](docs/MODEL.md), [docs/SEEDER.md](docs/SEEDER.md)
-and [docs/SPRAYER.md](docs/SPRAYER.md); the shipped profiles are in `profiles/`.
+and [docs/SPRAYER.md](docs/SPRAYER.md); the shipped profiles are in `profiles/`, the pools in
+`pools/`.
 
 ## Run
 
@@ -37,7 +39,8 @@ JSON object a line on stdout and to every TCP client, for example:
 Commands are one a line, answered with a `command` event: `switch <section> on|off`,
 `master on|off [boom]`, `auto on|off [boom]`, `rate <value> [product]`, `bin <level> [product]`
 (`tank` on a sprayer), `fill [product]`, `depth <mm>`, `speed <km/h>` or `speed bus`,
-`fault row|nozzle <section> blocked|clear`, `status`, `help`, `quit`. Try it by hand:
+`fault row|nozzle <section> blocked|clear`, `alarm <name>` or `alarm clear`, `key <object>`,
+`mask <id>`, `value <object> <n>`, `status`, `help`, `quit`. Try it by hand:
 
 ```sh
 build/implement --profile profiles/sprayer-24.json --driver virtual
@@ -47,7 +50,9 @@ status
 ```
 
 `build/ddop_check <file.ddop>` parses a binary DDOP, such as one a task controller saved, and
-prints its element tree and any broken child references.
+prints its element tree and any broken child references. `build/vt_stub --interface vcan0` is
+a headless virtual terminal for the scenarios: it takes the implement's pool and injects key
+presses and values from stdin.
 
 ## Tests
 
@@ -55,8 +60,8 @@ prints its element tree and any broken child references.
 `tests/scenario_commands.py build/implement` drives one implement over its TCP port on the
 virtual driver, on any platform. On Linux with `vcan0`, `tests/scenario_tc.py` runs every
 shipped profile against a headless AOG-TaskController and checks that sections follow with the
-profile's delay and that the operator's commands override it; `tests/harness.py` is the library
-the scenarios share.
+profile's delay and that the operator's commands override it; `tests/scenario_vt.py` runs the
+screens against `vt_stub`; `tests/harness.py` is the library the scenarios share.
 
 ## Build
 

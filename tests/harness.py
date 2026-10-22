@@ -161,9 +161,9 @@ class Implement:
         e = self.sections.get(boom)
         return e["actual"] if e else None
 
-    def find(self, name, since=0, **match):
-        """Events of a name since an index, with matching fields."""
-        return [e for e in self.events[since:] if e["event"] == name and all(e.get(k) == v for k, v in match.items())]
+    def find(self, event, since=0, **match):
+        """Events of a kind since an index, with matching fields."""
+        return [e for e in self.events[since:] if e["event"] == event and all(e.get(k) == v for k, v in match.items())]
 
     def stop(self):
         if self.sock:
@@ -258,3 +258,55 @@ class TaskController:
             self.proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             self.proc.kill()
+
+
+class VtStub:
+    """tools/vt_stub: a headless virtual terminal server on a SocketCAN interface. Its events
+    are JSON lines on stdout; it takes key, button, ack, value and quit on stdin."""
+
+    def __init__(self, binary, iface):
+        self.proc = subprocess.Popen([binary, "--interface", iface], stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        os.set_blocking(self.proc.stdout.fileno(), False)
+        os.set_blocking(self.proc.stderr.fileno(), False)
+        self.buf = b""
+        self.err = b""
+        self.events = []
+        self.mask = None
+        self.pool = None  # last pool event's state
+
+    def poll(self):
+        r, _, _ = select.select([self.proc.stdout, self.proc.stderr], [], [], 0)
+        if self.proc.stderr in r:
+            self.err += self.proc.stderr.read() or b""
+        if self.proc.stdout in r:
+            self.buf += self.proc.stdout.read() or b""
+            while b"\n" in self.buf:
+                line, self.buf = self.buf.split(b"\n", 1)
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                self.events.append(e)
+                if e["event"] == "mask":
+                    self.mask = e["mask"]
+                elif e["event"] == "pool":
+                    self.pool = e["state"]
+
+    def send(self, command):
+        self.proc.stdin.write((command + "\n").encode())
+        self.proc.stdin.flush()
+
+    def find(self, event, since=0, **match):
+        return [e for e in self.events[since:] if e["event"] == event and all(e.get(k) == v for k, v in match.items())]
+
+    def stop(self):
+        try:
+            self.send("quit")
+        except (OSError, ValueError):
+            pass
+        try:
+            self.proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+        self.poll()

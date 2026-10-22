@@ -52,7 +52,8 @@ namespace sim
 		const char *HELP =
 		  "switch <section> on|off | master on|off [boom] | auto on|off [boom] | rate <value> [product] | "
 		  "bin <level> [product] | tank <level> | fill [product] | depth <mm> | speed <km/h>|bus | "
-		  "fault row|nozzle <section> blocked|clear | status | help | quit";
+		  "fault row|nozzle <section> blocked|clear | alarm <name>|clear | key <object> | mask <id> | "
+		  "value <object> <n> | status | help | quit";
 	}
 
 	CommandServer::CommandServer(const Profile &p, Model &m, std::mutex &mx, Events &ev, ImplementClient &c, std::atomic_bool &run) :
@@ -288,6 +289,14 @@ namespace sim
 		s["type"] = profile.type;
 		s["tc"] = { { "connected", client.connected() }, { "state", client.state() } };
 		s["address"] = client.address();
+		if (terminal && terminal->active())
+		{
+			s["vt"] = { { "connected", terminal->connected() }, { "mask", terminal->active_mask() }, { "pool", terminal->pool_path() } };
+		}
+		else
+		{
+			s["vt"] = { { "connected", false }, { "pool", nullptr } };
+		}
 		{
 			std::lock_guard<std::mutex> lock(modelMutex);
 			s["booms"] = nlohmann::json::array();
@@ -497,6 +506,58 @@ namespace sim
 				model.set_fixed_speed(value / 3.6 * 1000.0);
 				result["source"] = "fixed";
 				result["kmh"] = value;
+			}
+		}
+		else if (cmd == "alarm" || cmd == "key" || cmd == "mask" || cmd == "value")
+		{
+			if (!terminal || !terminal->active())
+			{
+				fail("no terminal client: the profile's pool did not load");
+			}
+			else if (cmd == "alarm")
+			{
+				if (a1 == "clear")
+				{
+					terminal->clear_alarms();
+				}
+				else if (a1.empty() || !terminal->raise_alarm(a1, error))
+				{
+					fail(error.empty() ? "alarm <name> | alarm clear" : error);
+				}
+			}
+			else if (cmd == "key")
+			{
+				if (!number(a1, value) || value < 0 || value > 65535)
+				{
+					fail("key <object id>");
+				}
+				else
+				{
+					terminal->press_key(static_cast<std::uint16_t>(value));
+				}
+			}
+			else if (cmd == "mask")
+			{
+				if (!number(a1, value) || value < 0 || value > 65535)
+				{
+					fail("mask <object id>");
+				}
+				else if (!terminal->change_mask(static_cast<std::uint16_t>(value)))
+				{
+					fail("the terminal is not connected");
+				}
+			}
+			else
+			{
+				double v = 0;
+				if (!number(a1, value) || value < 0 || value > 65535 || !number(a2, v) || v < 0)
+				{
+					fail("value <object id> <n>");
+				}
+				else if (!terminal->set_value(static_cast<std::uint16_t>(value), static_cast<std::uint32_t>(v)))
+				{
+					fail("the terminal is not connected");
+				}
 			}
 		}
 		else if (cmd == "fault")

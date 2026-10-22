@@ -47,14 +47,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: aog-tc/build/AOG-TaskController
-          key: aog-tc-4ede403-${{ matrix.os }}-v1
-      - name: Build AOG-TaskController
+          key: aog-tc-4ede403-stack-42ea80e-${{ matrix.os }}-v1
+      - name: Build AOG-TaskController against the stack this repository fetches
+        # Its own pin (c0e1ebb) has the DataSpan bug that scrambles its DDI-to-element map (PLAN.md phase 1 record)
         if: steps.tc-cache.outputs.cache-hit != 'true'
         run: |
-          cmake -S aog-tc -B aog-tc/build -G Ninja -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release -Wno-dev
+          cmake -S aog-tc -B aog-tc/build -G Ninja -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release -Wno-dev \
+                -DFETCHCONTENT_SOURCE_DIR_ISOBUS="$PWD/build/_deps/agisostack-src"
           cmake --build aog-tc/build --target AOG-TaskController
-      - name: Phase 1. Every profile against AOG-TaskController on vcan0
-        run: python3 tests/phase1_tc.py --tc aog-tc/build/AOG-TaskController --implement build/implement --iface vcan0 --keep-log phase1-tc.log
+      - name: Phase 2. Commands and events on the virtual driver, no bus
+        run: python3 tests/scenario_commands.py build/implement profiles
+      - name: Phases 1 and 2. Every profile against AOG-TaskController on vcan0
+        run: python3 tests/scenario_tc.py --tc aog-tc/build/AOG-TaskController --implement build/implement --iface vcan0 --keep-log phase1-tc.log
       - name: Keep the task controller's log
         if: always()
         uses: actions/upload-artifact@v4

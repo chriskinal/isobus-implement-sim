@@ -35,6 +35,9 @@ namespace sim
 		void stop();
 
 		const Ddop &ddop() const { return pool; }
+		bool connected() const { return lastConnected; }
+		int address() const { return lastAddress; }
+		const char *state() const { return lastStateName; }
 
 	private:
 		static bool request_value_callback(std::uint16_t element, std::uint16_t ddi, std::int32_t &value, void *parent);
@@ -56,10 +59,10 @@ namespace sim
 		std::shared_ptr<isobus::TaskControllerClient> client;
 		std::unique_ptr<isobus::SpeedMessagesInterface> speed;
 
-		std::int32_t depthSetpoint;
 		// Last reported, for the change events
 		bool lastConnected = false;
 		int lastState = -1;
+		const char *lastStateName = "none";
 		std::uint8_t lastAddress = 0xFF;
 		std::vector<std::string> lastSetpoint, lastCommanded, lastActual;
 		std::vector<bool> lastAuto, lastMaster;

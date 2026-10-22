@@ -7,6 +7,7 @@ namespace sim
 {
 	Model::Model(const Profile &profile) :
 	  prof(profile),
+	  depthMm(profile.seeder.depthSetpoint),
 	  delayOnMs(static_cast<std::uint32_t>(profile.delayOn * 1000.0 + 0.5)),
 	  delayOffMs(static_cast<std::uint32_t>(profile.delayOff * 1000.0 + 0.5))
 	{
@@ -98,6 +99,10 @@ namespace sim
 
 	void Model::set_speed(double mmPerSecond, std::uint32_t nowMs)
 	{
+		if (speedFixed)
+		{
+			return;
+		}
 		speedMmS = std::max(mmPerSecond, 0.0);
 		speedKnown = true;
 		speedAtMs = nowMs;
@@ -105,8 +110,31 @@ namespace sim
 
 	void Model::set_speed_unknown()
 	{
+		if (speedFixed)
+		{
+			return;
+		}
 		speedKnown = false;
 		speedMmS = 0;
+	}
+
+	void Model::set_fixed_speed(double mmPerSecond)
+	{
+		speedFixed = true;
+		speedMmS = std::max(mmPerSecond, 0.0);
+		speedKnown = true;
+	}
+
+	void Model::clear_fixed_speed()
+	{
+		speedFixed = false;
+		speedKnown = false;
+		speedMmS = 0;
+	}
+
+	void Model::set_depth(std::int32_t mm)
+	{
+		depthMm = std::min(std::max(mm, prof.seeder.depthMin), prof.seeder.depthMax);
 	}
 
 	double Model::target_rate(std::size_t product) const
@@ -136,7 +164,7 @@ namespace sim
 		lastTickMs = nowMs;
 
 		// Speed goes stale two seconds after the last message (MODEL.md section 6)
-		if (speedKnown && (nowMs - speedAtMs) > 2000)
+		if (speedKnown && !speedFixed && (nowMs - speedAtMs) > 2000)
 		{
 			speedKnown = false;
 			speedMmS = 0;

@@ -164,9 +164,34 @@ OrbStack machine. Results, all on `vcan0`:
 - `sprayer-36-nozzle` (72 sections): registered as 72, driven through the app's 64-bit word,
   so sections 65 to 72 never switch while the heartbeat reports all 72 on. One DDOP upload was
   aborted (ETP, reason 3) and retried in one run of two.
-- Right after a new implement registered, the task controller sent DDI 160 to the previous
-  implement's boom element number, which does not exist in the new DDOP: a stale element
-  from the client that had just left. To raise upstream once reproduced on its own.
+- **AOG-TaskController's DDI-to-element map is read through a broken span.** Its pinned
+  AgIsoStack++ (c0e1ebb, 2026-09-19) has the `DataSpan` bug fixed upstream in #783
+  (2026-10-18): iterating `DeviceElementObject::get_child_object_ids()` yields twice the
+  children, the second half read from whatever follows in memory. The task controller walks
+  that list to map each condensed work state DDI to an element, so with larger pools it maps
+  some chunks onto garbage elements ("Mapped DDI 162 ... to element 3", a row) and those
+  chunks never move; which chunks differs from run to run and from machine to machine.
+  `tools/ddop_check` built against that stack shows the garbage on the exact bytes the task
+  controller received; the current stack parses the same bytes cleanly. Until its pin moves,
+  the scenarios build AOG-TaskController against the stack this repository fetches
+  (`-DFETCHCONTENT_SOURCE_DIR_ISOBUS`). To raise upstream, with the pin bump.
+- Smaller, from the code: `on_client_timeout` erases the client but not its queue of
+  uploaded pool chunks, and `activate_object_pool` parses every queued chunk into one pool.
+  A client that leaves by timeout and uploads again would get both pools merged. The
+  scenario restarts the task controller for every profile, and runs one back-to-back case
+  recorded, not checked.
+- The simulator's own departure: on exit it stops the stack without waiting for the
+  deactivate exchange, so the task controller drops it by timeout, 4 to 5 s later. A clean
+  leave belongs with phase 4's `fault restart`.
+
+**Phase 2 record (2026-10-22).** Done. Commands are lines on stdin and on a TCP port
+(`--port 0` picks one and reports it in the `listening` event); every connected client gets
+every event, and each command is answered with a `command` event. Built: `switch`, `master`,
+`auto`, `rate`, `bin` and `tank`, `fill`, `depth`, `speed`, `fault row|nozzle <n> blocked|clear`,
+`status`, `help`, `quit`; the terminal commands come with phase 3, the other faults with phase 4.
+`tests/harness.py` is the scenario library; `tests/scenario_commands.py` drives one implement
+on the stack's virtual driver with no bus (runs on macOS too), and `tests/scenario_tc.py` is the
+phase 1 check as a scenario, with operator overrides through commands. Both run in CI.
 
 ## 9. Who uses it
 

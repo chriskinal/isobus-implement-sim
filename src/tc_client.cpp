@@ -75,8 +75,7 @@ namespace sim
 	  profile(p),
 	  model(m),
 	  modelMutex(mx),
-	  events(ev),
-	  depthSetpoint(p.seeder.depthSetpoint)
+	  events(ev)
 	{
 		lastSetpoint.resize(p.booms.size());
 		lastCommanded.resize(p.booms.size());
@@ -384,7 +383,7 @@ namespace sim
 					break;
 				case d(DDI::SetpointSeedingDepth):
 				case d(DDI::ActualSeedingDepth):
-					value = depthSetpoint;
+					value = model.depth();
 					break;
 				default:
 					break;
@@ -491,7 +490,7 @@ namespace sim
 						fields["what"] = "prescription";
 						break;
 					case d(DDI::SetpointSeedingDepth):
-						depthSetpoint = std::min(std::max(value, profile.seeder.depthMin), profile.seeder.depthMax);
+						model.set_depth(value);
 						fields["what"] = "depth";
 						break;
 					default:
@@ -515,7 +514,8 @@ namespace sim
 		if (state != lastState)
 		{
 			lastState = state;
-			events.emit("tcState", { { "state", state_name(client->get_state()) } });
+			lastStateName = state_name(client->get_state());
+			events.emit("tcState", { { "state", lastStateName } });
 		}
 		const bool connected = client->get_is_connected();
 		if (connected != lastConnected)

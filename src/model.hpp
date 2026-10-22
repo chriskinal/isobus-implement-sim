@@ -66,8 +66,13 @@ namespace sim
 		void set_bin_level(std::size_t product, double level);
 		void reset_trip_total(std::size_t product);
 		void reset_boom_totals(std::size_t boom);
-		void set_speed(double mmPerSecond, std::uint32_t nowMs);
+		void set_speed(double mmPerSecond, std::uint32_t nowMs); ///< From the bus; ignored while a fixed speed is set
 		void set_speed_unknown();
+		void set_fixed_speed(double mmPerSecond); ///< The speed command: never goes stale
+		void clear_fixed_speed(); ///< Back to the bus
+		bool fixed_speed() const { return speedFixed; }
+		void set_depth(std::int32_t mm);
+		std::int32_t depth() const { return depthMm; }
 
 		/// @brief Advances the model to nowMs. Call every 20 ms.
 		void tick(std::uint32_t nowMs);
@@ -110,6 +115,8 @@ namespace sim
 		std::vector<ProductState> products;
 		double speedMmS = 0;
 		bool speedKnown = false;
+		bool speedFixed = false;
+		std::int32_t depthMm;
 		std::uint32_t speedAtMs = 0;
 		std::uint32_t lastTickMs = 0;
 		bool ticked = false;

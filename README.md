@@ -8,12 +8,12 @@ Each implement comes from a profile file (booms, sections, rates, screens), is d
 commands, reports what the system under test did as events, and can misbehave on demand: drop
 off the bus, restart, upload a new pool, answer late.
 
-**Status:** phase 1 of [docs/PLAN.md](docs/PLAN.md): a task controller client built from a
-profile. The DDOP comes from the profile's booms, sections and products; sections follow the
-task controller's setpoints after the profile's delay; events come out as JSON lines. No
-terminal client, commands or faults yet. The machines are described in
-[docs/MODEL.md](docs/MODEL.md), [docs/SEEDER.md](docs/SEEDER.md) and
-[docs/SPRAYER.md](docs/SPRAYER.md); the shipped profiles are in `profiles/`.
+**Status:** phase 2 of [docs/PLAN.md](docs/PLAN.md): a task controller client built from a
+profile, driven by commands. The DDOP comes from the profile's booms, sections and products;
+sections follow the task controller's setpoints after the profile's delay; commands arrive on
+stdin or a TCP port and events go out as JSON lines. No terminal client or faults yet. The
+machines are described in [docs/MODEL.md](docs/MODEL.md), [docs/SEEDER.md](docs/SEEDER.md)
+and [docs/SPRAYER.md](docs/SPRAYER.md); the shipped profiles are in `profiles/`.
 
 ## Run
 
@@ -22,9 +22,10 @@ build/implement --profile profiles/sprayer-24.json --interface vcan0
 ```
 
 Options: `--driver virtual` for the stack's in-process bus (the only one on macOS),
+`--port 0` (or a number) to take commands on a local TCP port as well as stdin,
 `--section-control setpoint|actualSettable|perElement` to override the profile's section
 control method, `--log debug|info|warn|error` for the stack's log on stderr. Events are one
-JSON object a line on stdout, for example:
+JSON object a line on stdout and to every TCP client, for example:
 
 ```
 {"t":622,"event":"address","address":128}
@@ -33,11 +34,29 @@ JSON object a line on stdout, for example:
 {"t":10150,"event":"sections","boom":0,"setpoint":"101010101010","commanded":"101010101010","actual":"101010101010"}
 ```
 
+Commands are one a line, answered with a `command` event: `switch <section> on|off`,
+`master on|off [boom]`, `auto on|off [boom]`, `rate <value> [product]`, `bin <level> [product]`
+(`tank` on a sprayer), `fill [product]`, `depth <mm>`, `speed <km/h>` or `speed bus`,
+`fault row|nozzle <section> blocked|clear`, `status`, `help`, `quit`. Try it by hand:
+
+```sh
+build/implement --profile profiles/sprayer-24.json --driver virtual
+speed 12
+switch 3 off
+status
+```
+
+`build/ddop_check <file.ddop>` parses a binary DDOP, such as one a task controller saved, and
+prints its element tree and any broken child references.
+
 ## Tests
 
-`ctest --test-dir build` runs the model and DDOP tests without a bus. On Linux with `vcan0`,
-`tests/phase1_tc.py` runs every shipped profile against a headless AOG-TaskController and
-checks that sections follow with the profile's delay.
+`ctest --test-dir build` runs the model and DDOP tests without a bus.
+`tests/scenario_commands.py build/implement` drives one implement over its TCP port on the
+virtual driver, on any platform. On Linux with `vcan0`, `tests/scenario_tc.py` runs every
+shipped profile against a headless AOG-TaskController and checks that sections follow with the
+profile's delay and that the operator's commands override it; `tests/harness.py` is the library
+the scenarios share.
 
 ## Build
 

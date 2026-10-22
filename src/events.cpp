@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <cstdio>
+#include <sys/socket.h>
+#include <vector>
 
 namespace sim
 {
@@ -32,10 +34,40 @@ namespace sim
 		{
 			line[item.key()] = item.value();
 		}
-		const std::string text = line.dump();
+		const std::string text = line.dump() + "\n";
 		std::lock_guard<std::mutex> lock(mutex);
 		std::fputs(text.c_str(), stdout);
-		std::fputc('\n', stdout);
 		std::fflush(stdout);
+		std::vector<int> dead;
+		for (int fd : sinks)
+		{
+			std::size_t sent = 0;
+			while (sent < text.size())
+			{
+				const auto n = ::send(fd, text.data() + sent, text.size() - sent, MSG_NOSIGNAL);
+				if (n <= 0)
+				{
+					dead.push_back(fd);
+					break;
+				}
+				sent += static_cast<std::size_t>(n);
+			}
+		}
+		for (int fd : dead)
+		{
+			sinks.erase(fd);
+		}
+	}
+
+	void Events::add_sink(int fd)
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+		sinks.insert(fd);
+	}
+
+	void Events::remove_sink(int fd)
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+		sinks.erase(fd);
 	}
 }

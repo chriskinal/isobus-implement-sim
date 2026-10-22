@@ -56,6 +56,7 @@ target_compile_options(implement_core PRIVATE -Wall -Wextra)
 add_executable(implement
   src/main.cpp
   src/tc_client.cpp
+  src/commands.cpp
   ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
 target_include_directories(implement PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
 target_link_libraries(implement PRIVATE implement_core isobus::Isobus isobus::HardwareIntegration isobus::Utility Threads::Threads)
@@ -66,3 +67,6 @@ enable_testing()
 add_executable(test_model tests/test_model.cpp)
 target_link_libraries(test_model PRIVATE implement_core)
 add_test(NAME model COMMAND test_model ${CMAKE_SOURCE_DIR}/profiles)
+
+add_executable(ddop_check tools/ddop_check.cpp)
+target_link_libraries(ddop_check PRIVATE isobus::Isobus isobus::Utility)

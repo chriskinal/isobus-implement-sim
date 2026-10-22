@@ -7,12 +7,15 @@
 
 #include <cmath>
 #include <cstdio>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 static int failures = 0;
 static int checks = 0;
+static int argc_copy = 0;
+static char **argv_copy = nullptr;
 
 #define CHECK(cond, ...)                                             \
 	do                                                                 \
@@ -301,6 +304,78 @@ static void test_ddop(const std::string &dir)
 			}
 		}
 	}
+	// Round trip through the stack's serializer: every element's children exist and belong to one element only
+	for (const char *f : files)
+	{
+		auto p = sim::load_profile(dir + "/" + f + ".json");
+		auto d = sim::build_ddop(p, name, "0.1.0");
+		d.pool->set_task_controller_compatibility_level(3);
+		std::vector<std::uint8_t> binary;
+		d.pool->generate_binary_object_pool(binary);
+		if (argc_copy > 3)
+		{
+			// Check a DDOP file a task controller received instead (argv[3]), for the planter-48 profile
+			if (std::string(f) != "planter-48")
+			{
+				continue;
+			}
+			FILE *in = std::fopen(argv_copy[3], "rb");
+			binary.clear();
+			int c;
+			while (in && (c = std::fgetc(in)) != EOF)
+			{
+				binary.push_back(static_cast<std::uint8_t>(c));
+			}
+			if (in)
+			{
+				std::fclose(in);
+			}
+			std::printf("info  checking %s, %zu bytes\n", argv_copy[3], binary.size());
+		}
+		isobus::DeviceDescriptorObjectPool parsed;
+		parsed.set_task_controller_compatibility_level(3);
+		// A received file carries the real implement's NAME; NAME 0 skips the check, as a task controller would pass the sender's
+		CHECK(parsed.deserialize_binary_object_pool(binary.data(), static_cast<std::uint32_t>(binary.size()), argc_copy > 3 ? isobus::NAME(0) : name), "%s: the stack parses its own binary", f);
+		CHECK(parsed.size() == d.objectCount, "%s: %u objects parsed of %zu", f, parsed.size(), d.objectCount);
+		std::map<std::uint16_t, std::uint16_t> owner; // child id -> element id
+		std::size_t elements = 0, problems = 0;
+		for (std::uint16_t i = 0; i < parsed.size(); i++)
+		{
+			auto object = parsed.get_object_by_index(i);
+			if (!object || object->get_object_type() != isobus::task_controller_object::ObjectTypes::DeviceElement)
+			{
+				continue;
+			}
+			elements++;
+			auto element = std::static_pointer_cast<isobus::task_controller_object::DeviceElementObject>(object);
+			for (std::uint16_t child : element->get_child_object_ids())
+			{
+				if (!parsed.get_object_by_id(child))
+				{
+					problems++;
+					std::printf("info  %s: element %u (object %u) references missing object %u\n", f, element->get_element_number(), element->get_object_id(), child);
+				}
+				auto found = owner.find(child);
+				if (found != owner.end())
+				{
+					problems++;
+					std::printf("info  %s: object %u is a child of elements (objects) %u and %u\n", f, child, found->second, element->get_object_id());
+				}
+				owner[child] = element->get_object_id();
+			}
+		}
+		CHECK(problems == 0, "%s: %zu child reference problems over %zu elements", f, problems, elements);
+		if (std::string(f) == "planter-48" && argc_copy > 2)
+		{
+			FILE *out = std::fopen(argv_copy[2], "wb");
+			if (out)
+			{
+				std::fwrite(binary.data(), 1, binary.size(), out);
+				std::fclose(out);
+			}
+		}
+	}
+
 	// A changed geometry changes the structure label
 	auto a = sim::load_profile(dir + "/sprayer-24.json");
 	auto b = a;
@@ -311,6 +386,8 @@ static void test_ddop(const std::string &dir)
 
 int main(int argc, char **argv)
 {
+	argc_copy = argc;
+	argv_copy = argv;
 	const std::string dir = argc > 1 ? argv[1] : "profiles";
 	try
 	{

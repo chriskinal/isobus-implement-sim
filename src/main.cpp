@@ -1,9 +1,12 @@
 // implement: one simulated ISOBUS implement from a profile (docs/PLAN.md).
 //
 //   implement --profile profiles/sprayer-24.json [--interface vcan0] [--driver socketcan|virtual]
-//             [--section-control setpoint|actualSettable|perElement] [--log debug|info|warn|error]
+//             [--port 0|<n>] [--section-control setpoint|actualSettable|perElement]
+//             [--log debug|info|warn|error]
 //
-// Events are JSON lines on stdout; the stack's log goes to stderr.
+// Events are JSON lines on stdout and to every client of the TCP port; commands are lines on
+// stdin and from those clients; the stack's log goes to stderr.
+#include "commands.hpp"
 #include "events.hpp"
 #include "model.hpp"
 #include "profile.hpp"
@@ -16,6 +19,7 @@
 #include <chrono>
 #include <csignal>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <mutex>
@@ -61,7 +65,7 @@ namespace
 	void usage()
 	{
 		std::fprintf(stderr,
-		             "usage: implement --profile <file> [--interface vcan0] [--driver socketcan|virtual]\n"
+		             "usage: implement --profile <file> [--interface vcan0] [--driver socketcan|virtual] [--port 0|<n>]\n"
 		             "                 [--section-control setpoint|actualSettable|perElement] [--log debug|info|warn|error]\n");
 	}
 }
@@ -69,6 +73,7 @@ namespace
 int main(int argc, char **argv)
 {
 	std::string profilePath, interface, driverName, sectionControl, logLevel = "warn";
+	int port = -1;
 	for (int i = 1; i < argc; i++)
 	{
 		const std::string a = argv[i];
@@ -92,6 +97,10 @@ int main(int argc, char **argv)
 		else if (a == "--log" && hasValue)
 		{
 			logLevel = argv[++i];
+		}
+		else if (a == "--port" && hasValue)
+		{
+			port = std::atoi(argv[++i]);
 		}
 		else
 		{
@@ -153,6 +162,14 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	sim::CommandServer commands(profile, model, modelMutex, events, client, running);
+	if (!commands.start(port))
+	{
+		std::fprintf(stderr, "could not listen on port %d\n", port);
+		client.stop();
+		return 1;
+	}
+
 	// The model ticks every 20 ms (MODEL.md section 8)
 	auto next = std::chrono::steady_clock::now();
 	while (running)
@@ -165,6 +182,7 @@ int main(int argc, char **argv)
 		}
 		client.update();
 	}
+	commands.stop();
 	client.stop();
 	events.emit("exit");
 	return 0;

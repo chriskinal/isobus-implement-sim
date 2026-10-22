@@ -23,7 +23,7 @@ timing compensation and whether it copes with more than one product and boom.
 |---|---|---|---|---|---|---|
 | `planter-12` | 12 rows at 762 mm (30 in), mounted | 12, one a row | 9.14 m | seeds, 80 000/ha, hopper 1 500 000 seeds | 0.2 / 0.2 s | The stack's seeder as a profile: the baseline |
 | `planter-24` | 24 rows at 762 mm, mounted | 24 | 18.29 m | seeds, 80 000/ha | 0.2 / 0.2 s | Two condensed messages (sections 17 to 24) |
-| `planter-48` | 48 rows at 381 mm (15 in), mounted | 48 | 18.29 m | seeds, 300 000/ha (a narrow-row crop) | 0.15 / 0.15 s | Three condensed messages; 48 row elements with row data: a DDOP of about 8 kB |
+| `planter-48` | 48 rows at 381 mm (15 in), mounted | 48 | 18.29 m | seeds, 300 000/ha (a narrow-row crop) | 0.15 / 0.15 s | Three condensed messages; 48 row elements with row data: a DDOP of 625 objects and 15 kB |
 | `drill-6m` | 6 m seed drill, mounted, 48 openers at 125 mm | 4 of 1.5 m | 6.0 m | seed 180 kg/ha, 1 200 kg; fertilizer 100 kg/ha, 800 kg | 1.0 / 0.8 s | Two products on one boom, mass units |
 | `airseeder-12m` | 12 m air seeder, trailed, tank cart 6 m behind the openers | seed boom 8 of 1.5 m; fertilizer boom 4 of 3.0 m | 12.0 m | seed 90 kg/ha, 4 000 kg; fertilizer 60 kg/ha, 3 000 kg | 3.0 / 2.5 s | PLAN.md's two-boom machine; booms with different section counts; a TC that declares one boom (AOG-TaskController) must refuse or cope |
 
@@ -183,8 +183,8 @@ harness asserts from the event stream and, where it can, from the TC's own statu
 1. **Hopper unit for planters.** Seeds (count), as the stack's pool shows, or kilograms, as
    most planter monitors do. Start with seeds; `bin.unit: kg` with a `seedsPerKg` key is a
    small addition if anyone needs it.
-2. **Row data size.** `planter-48` with row data is about 240 process data objects. A TC that
-   cannot take it is a finding, and `rowData: false` is the workaround.
+2. **Row data size.** `planter-48` with row data is 625 objects and 15 kB (eight process data
+   objects a row). A TC that cannot take it is a finding, and `rowData: false` is the workaround.
 3. **Tramlines** (DDIs 517 and up) and **variety or hybrid changes**: not modelled. Add when a
    TC under test does them.
 4. **Drills without section clutches.** Many have only a half-width shutoff: a two-section

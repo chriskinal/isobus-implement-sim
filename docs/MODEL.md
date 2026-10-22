@@ -23,9 +23,11 @@ Each boom carries its own condensed work state objects and its own totals, so a 
 machine is two independent section sets to the task controller.
 
 **Coordinates.** Millimetres. X positive forward, so a boom behind the hitch has a negative X.
-Y positive to the right, seen from above with the machine pointing up (open item 1). Section Y
-offsets are the section centres; section 1 is the first in the list and the profiles list them
-left to right, so section 1 has the most negative Y, as in the stack's examples.
+Y positive to the right, seen from above with the machine pointing up (open item 1). In the
+profile a section's offsets are relative to its boom; the DDOP sends every element's offset
+from the device reference point, so a section's is the boom's plus its own. Section Y offsets
+are the section centres; section 1 is the first in the list and the profiles list them left to
+right, so section 1 has the most negative Y, as in the stack's examples.
 
 ## 2. Section control
 
@@ -52,8 +54,8 @@ state is
 - in manual (0): switch and master.
 
 The actual state follows the commanded state after `sectionDelay.on` or `sectionDelay.off`
-seconds, measured from the tick the command arrived; a command reversed within the delay cancels
-the pending change. The delay is per machine (clutches, valves, air delivery); the per-type
+seconds, measured from the first tick that sees the command (so up to 20 ms after it arrived on
+the bus); a command reversed within the delay cancels the pending change. The delay is per machine (clutches, valves, air delivery); the per-type
 documents give the values. The boom's and the device's actual work state (141) is 1 when any
 section is on. A change of actual state is sent on change (the stack's OnChange trigger), never
 more often than once a tick.

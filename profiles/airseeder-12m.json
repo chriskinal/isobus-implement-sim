@@ -1,0 +1,24 @@
+{
+  "name": "Air seeder 12 m",
+  "type": "seeder",
+  "identity": 205,
+  "connector": { "type": "drawbar", "x": 0, "y": 0 },
+  "sectionControl": "setpoint",
+  "sectionDelay": { "on": 3.0, "off": 2.5 },
+  "booms": [
+    { "offsetX": -2500, "offsetY": 0, "offsetZ": 0,
+      "sections": { "count": 8, "width": 1500 } },
+    { "offsetX": -2500, "offsetY": 0, "offsetZ": 0,
+      "sections": { "count": 4, "width": 3000 } }
+  ],
+  "products": [
+    { "name": "Seed", "unit": "kg/ha", "rate": 90, "min": 20, "max": 300,
+      "tau": 2.0, "noise": 0.02, "boom": 0,
+      "bin": { "unit": "kg", "capacity": 4000, "level": 4000, "low": 0.05 } },
+    { "name": "Fertilizer", "unit": "kg/ha", "rate": 60, "min": 10, "max": 250,
+      "tau": 2.0, "noise": 0.02, "boom": 1,
+      "bin": { "unit": "kg", "capacity": 3000, "level": 3000, "low": 0.05 } }
+  ],
+  "seeder": { "kind": "drill", "rowData": false, "meter": { "maxSpeed": 12 } },
+  "pool": "pools/seeder.iop"
+}

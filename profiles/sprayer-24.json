@@ -1,0 +1,24 @@
+{
+  "name": "Sprayer 24 m",
+  "type": "sprayer",
+  "identity": 101,
+  "connector": { "type": "drawbar", "x": 0, "y": 0 },
+  "sectionControl": "setpoint",
+  "sectionDelay": { "on": 0.3, "off": 0.2 },
+  "booms": [
+    { "offsetX": -4500, "offsetY": 0, "offsetZ": 500,
+      "sections": { "count": 12, "width": 2000 } }
+  ],
+  "products": [
+    { "name": "Tank mix", "unit": "l/ha", "rate": 150, "min": 50, "max": 400,
+      "tau": 1.0, "noise": 0.02, "boom": 0,
+      "bin": { "unit": "l", "capacity": 3000, "level": 3000, "low": 0.05 } }
+  ],
+  "sprayer": {
+    "nozzle": { "spacing": 500, "flow": 1.6, "pressure": 3.0 },
+    "pump": { "maxFlow": 200 },
+    "pressure": { "min": 1.0, "max": 6.0 },
+    "rateStep": 0.1
+  },
+  "pool": "pools/sprayer.iop"
+}

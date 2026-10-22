@@ -136,6 +136,31 @@ runner's Azure kernel has no `vcan` until `linux-modules-extra` is installed. Lo
 compiles with the stack's virtual driver only; bus checks run in an OrbStack Ubuntu machine
 (`isobus`), whose kernel has `vcan`, building into `build-linux/`.
 
+**Phase 1 record (2026-10-22).** Done. `implement --profile <file>` builds the DDOP from the
+profile (`src/ddop.cpp`), runs the model (`src/model.cpp`) at 50 Hz and answers the stack's
+task controller client (`src/tc_client.cpp`); events are JSON lines on stdout. `test_model`
+checks the model and the DDOP of every shipped profile without a bus; `tests/phase1_tc.py`
+runs the profiles against AOG-TaskController 4ede403 headless on `vcan0`, in CI and in the
+OrbStack machine. Results, all on `vcan0`:
+
+- Every one-boom profile connects in 7 to 9 s and the sections follow the setpoints; the
+  measured delays are the profile's within 20 ms (one tick). All three section control methods
+  work: AOG-TaskController names the one it chose.
+- Speed: AOG-TaskController's tractor ECU takes speed from DDI 397 in PGN 242, though its
+  PROTOCOL.md says 156.
+- Section control off from the app sends DDI 160 = 0 about ten times a second, for as long
+  as it is off. The implement goes to manual, where the operator's switches rule and default
+  on, so every section is on: what a real machine does, and what an app should expect.
+- `airseeder-12m` (two booms): the task controller registers 12 sections as one list, sends
+  the 12-section condensed value to the second boom's element only, and the first boom never
+  moves. It declares one boom; two should be refused or driven separately.
+- `sprayer-36-nozzle` (72 sections): registered as 72, driven through the app's 64-bit word,
+  so sections 65 to 72 never switch while the heartbeat reports all 72 on. One DDOP upload was
+  aborted (ETP, reason 3) and retried in one run of two.
+- Right after a new implement registered, the task controller sent DDI 160 to the previous
+  implement's boom element number, which does not exist in the new DDOP: a stale element
+  from the client that had just left. To raise upstream once reproduced on its own.
+
 ## 9. Who uses it
 
 | Project | For |

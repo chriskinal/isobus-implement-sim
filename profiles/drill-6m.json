@@ -1,0 +1,22 @@
+{
+  "name": "Drill 6 m",
+  "type": "seeder",
+  "identity": 204,
+  "connector": { "type": "threePoint", "x": 0, "y": 0 },
+  "sectionControl": "setpoint",
+  "sectionDelay": { "on": 1.0, "off": 0.8 },
+  "booms": [
+    { "offsetX": -1500, "offsetY": 0, "offsetZ": 0,
+      "sections": { "count": 4, "width": 1500 } }
+  ],
+  "products": [
+    { "name": "Seed", "unit": "kg/ha", "rate": 180, "min": 50, "max": 400,
+      "tau": 1.5, "noise": 0.02, "boom": 0,
+      "bin": { "unit": "kg", "capacity": 1200, "level": 1200, "low": 0.05 } },
+    { "name": "Fertilizer", "unit": "kg/ha", "rate": 100, "min": 20, "max": 300,
+      "tau": 1.5, "noise": 0.02, "boom": 0,
+      "bin": { "unit": "kg", "capacity": 800, "level": 800, "low": 0.05 } }
+  ],
+  "seeder": { "kind": "drill", "rowData": false, "meter": { "maxSpeed": 14 } },
+  "pool": "pools/seeder.iop"
+}

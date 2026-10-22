@@ -1,0 +1,25 @@
+{
+  "name": "Planter 12 row",
+  "type": "seeder",
+  "identity": 201,
+  "connector": { "type": "threePoint", "x": 0, "y": 0 },
+  "sectionControl": "setpoint",
+  "sectionDelay": { "on": 0.2, "off": 0.2 },
+  "booms": [
+    { "offsetX": -300, "offsetY": 0, "offsetZ": 0,
+      "rows": { "count": 12, "spacing": 762 } }
+  ],
+  "products": [
+    { "name": "Seed", "unit": "seeds/ha", "rate": 80000, "min": 20000, "max": 200000,
+      "tau": 0.5, "noise": 0.01, "boom": 0,
+      "bin": { "unit": "seeds", "capacity": 1500000, "level": 1500000, "low": 0.05 } }
+  ],
+  "seeder": {
+    "kind": "planter",
+    "rowData": true,
+    "meter": { "maxSpeed": 16 },
+    "singulation": { "base": 0.985, "knee": 10, "slope": 0.01, "walk": 0.003 },
+    "depth": { "setpoint": 50, "min": 20, "max": 90 }
+  },
+  "pool": "pools/seeder.iop"
+}

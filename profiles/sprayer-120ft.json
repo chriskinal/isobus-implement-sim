@@ -1,0 +1,32 @@
+{
+  "name": "Sprayer 120 ft",
+  "type": "sprayer",
+  "identity": 103,
+  "connector": { "type": "drawbar", "x": 0, "y": 0 },
+  "sectionControl": "setpoint",
+  "sectionDelay": { "on": 0.5, "off": 0.3 },
+  "booms": [
+    { "offsetX": -5000, "offsetY": 0, "offsetZ": 600,
+      "sections": [
+        { "name": "Left outer", "width": 6096, "offsetY": -15240 },
+        { "name": "Left mid", "width": 4572, "offsetY": -9906 },
+        { "name": "Left inner", "width": 4572, "offsetY": -5334 },
+        { "name": "Centre", "width": 6096, "offsetY": 0 },
+        { "name": "Right inner", "width": 4572, "offsetY": 5334 },
+        { "name": "Right mid", "width": 4572, "offsetY": 9906 },
+        { "name": "Right outer", "width": 6096, "offsetY": 15240 }
+      ] }
+  ],
+  "products": [
+    { "name": "Tank mix", "unit": "l/ha", "presentation": "gal/ac", "rate": 140, "min": 47, "max": 374,
+      "tau": 1.0, "noise": 0.02, "boom": 0,
+      "bin": { "unit": "l", "capacity": 4542, "level": 4542, "low": 0.05 } }
+  ],
+  "sprayer": {
+    "nozzle": { "spacing": 508, "flow": 1.6, "pressure": 3.0 },
+    "pump": { "maxFlow": 380 },
+    "pressure": { "min": 1.0, "max": 6.0 },
+    "rateStep": 0.1
+  },
+  "pool": "pools/sprayer.iop"
+}

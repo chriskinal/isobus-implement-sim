@@ -36,3 +36,33 @@ FetchContent_MakeAvailable(agisostack)
 set(BUILD_EXAMPLES ON)
 add_subdirectory(${agisostack_SOURCE_DIR}/examples/seeder_example
                  ${CMAKE_BINARY_DIR}/seeder_example)
+
+# ---------------------------------------------------------------------------------------------
+# The simulator (phase 1 and on)
+
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+                     URL_HASH SHA256=d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d)
+FetchContent_MakeAvailable(json)
+
+add_library(implement_core STATIC
+  src/profile.cpp
+  src/model.cpp
+  src/ddop.cpp
+  src/events.cpp)
+target_include_directories(implement_core PUBLIC src)
+target_link_libraries(implement_core PUBLIC isobus::Isobus isobus::Utility nlohmann_json::nlohmann_json)
+target_compile_options(implement_core PRIVATE -Wall -Wextra)
+
+add_executable(implement
+  src/main.cpp
+  src/tc_client.cpp
+  ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
+target_include_directories(implement PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
+target_link_libraries(implement PRIVATE implement_core isobus::Isobus isobus::HardwareIntegration isobus::Utility Threads::Threads)
+target_compile_options(implement PRIVATE -Wall -Wextra)
+find_package(Threads REQUIRED)
+
+enable_testing()
+add_executable(test_model tests/test_model.cpp)
+target_link_libraries(test_model PRIVATE implement_core)
+add_test(NAME model COMMAND test_model ${CMAKE_SOURCE_DIR}/profiles)

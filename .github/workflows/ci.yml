@@ -20,6 +20,8 @@ jobs:
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build
+      - name: Model and DDOP tests, no bus
+        run: ctest --test-dir build --output-on-failure
       - name: Virtual CAN
         run: |
           # The arm64 Azure kernel ships vcan in linux-modules-extra, not in the base image.
@@ -29,5 +31,24 @@ jobs:
           fi
           sudo ip link add vcan0 type vcan
           sudo ip link set vcan0 up
-      - name: The seeder example claims an address on vcan0
+      - name: Phase 0. The seeder example claims an address on vcan0
         run: tests/phase0_vcan.sh build/seeder_example/SeederExample vcan0
+      - name: AOG-TaskController source
+        uses: actions/checkout@v4
+        with:
+          repository: AgOpenGPS-Official/AOG-TaskController
+          ref: 4ede4034de845031caf9efcca69a85452783439d
+          path: aog-tc
+      - name: AOG-TaskController build cache
+        id: tc-cache
+        uses: actions/cache@v4
+        with:
+          path: aog-tc/build/AOG-TaskController
+          key: aog-tc-4ede403-${{ matrix.os }}-v1
+      - name: Build AOG-TaskController
+        if: steps.tc-cache.outputs.cache-hit != 'true'
+        run: |
+          cmake -S aog-tc -B aog-tc/build -G Ninja -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release -Wno-dev
+          cmake --build aog-tc/build --target AOG-TaskController
+      - name: Phase 1. Every profile against AOG-TaskController on vcan0
+        run: python3 tests/phase1_tc.py --tc aog-tc/build/AOG-TaskController --implement build/implement --iface vcan0

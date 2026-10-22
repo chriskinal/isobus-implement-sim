@@ -129,6 +129,13 @@ Each phase leaves something that runs and can be checked on `vcan0`.
 | 7 | **Auxiliary functions and inputs (AUX-N).** A simulated joystick and functions to assign | Assignment made on a terminal is stored and used |
 | 8 | **Releases.** Binaries for Linux x64 and arm64, profile documentation | Someone outside the project runs a profile against their own TC or terminal from the release alone |
 
+**Phase 0 record (2026-10-22).** Done. CMake fetches the stack at 42ea80e and builds
+`examples/seeder_example` unchanged; CI builds on `ubuntu-24.04` and `ubuntu-24.04-arm` and
+runs `tests/phase0_vcan.sh`, which sees the example claim address 0x80 on `vcan0`. The arm64
+runner's Azure kernel has no `vcan` until `linux-modules-extra` is installed. Locally, macOS
+compiles with the stack's virtual driver only; bus checks run in an OrbStack Ubuntu machine
+(`isobus`), whose kernel has `vcan`, building into `build-linux/`.
+
 ## 9. Who uses it
 
 | Project | For |

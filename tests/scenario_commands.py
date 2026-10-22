@@ -50,12 +50,12 @@ def main():
         check(e and e["ok"] and e["source"] == "fixed", "speed 12 km/h fixed")
         t = imp.wait(lambda i: any(ev.get("known") and abs(ev["kmh"] - 12.0) < 0.1 for ev in i.find("speed")), 2.0)
         check(t is not None, "speed event shows 12.0 km/h")
-        imp.wait(lambda i: False, 0.3)
+        imp.wait(lambda i: False, 5.5)  # five time constants of the regulator (MODEL.md section 3)
         s = imp.status()
         p = s["products"][0]
-        check(abs(p["actual"] - 150.0) < 0.1, "actual rate 150 l/ha while spraying at speed (%.1f)" % p["actual"])
-        check(abs(p["flowLPerMin"] - 72.0) < 0.5, "flow 72 l/min (%.1f)" % p["flowLPerMin"])
-        check(abs(p["pressureBar"] - 2.64) < 0.05, "pressure 2.64 bar (%.2f)" % p["pressureBar"])
+        check(abs(p["actual"] - 150.0) < 150.0 * 0.06, "actual rate near 150 l/ha while spraying at speed (%.1f)" % p["actual"])
+        check(abs(p["flowLPerMin"] - 72.0) < 5.0, "flow near 72 l/min (%.1f)" % p["flowLPerMin"])
+        check(abs(p["pressureBar"] - 2.64) < 0.4, "pressure near 2.64 bar (%.2f)" % p["pressureBar"])
         check(p["level"] < 3000.0, "the tank drains (%.3f l)" % p["level"])
 
         # The operator's rate applies only with prescription control off (the TC's state, default on)

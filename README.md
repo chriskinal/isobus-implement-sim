@@ -8,7 +8,8 @@ Each implement comes from a profile file (booms, sections, rates, screens), is d
 commands, reports what the system under test did as events, and can misbehave on demand: drop
 off the bus, restart, upload a new pool, answer late.
 
-**Status:** phase 7 of [docs/PLAN.md](docs/PLAN.md), with phase 6 (capture and replay) still
+**Status:** [v0.1.0](https://github.com/chriskinal/isobus-implement-sim/releases/tag/v0.1.0),
+phases 0 to 5, 7 and 8 of [docs/PLAN.md](docs/PLAN.md), with phase 6 (capture and replay) still
 to do: a task controller client and a terminal client built from a profile, driven by
 commands, with rates, totals, faults on demand and auxiliary functions. The DDOP comes from the profile's booms,
 sections and products; sections follow the task controller's setpoints after the profile's

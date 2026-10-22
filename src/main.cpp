@@ -1,7 +1,7 @@
 // implement: one simulated ISOBUS implement from a profile (docs/PLAN.md).
 //
 //   implement --profile profiles/sprayer-24.json [--interface vcan0] [--driver socketcan|virtual]
-//             [--port 0|<n>] [--section-control setpoint|actualSettable|perElement]
+//             [--port 0|<n>] [--pool <file.iop>] [--section-control setpoint|actualSettable|perElement]
 //             [--log debug|info|warn|error]
 //
 // Events are JSON lines on stdout and to every client of the TCP port; commands are lines on
@@ -67,14 +67,14 @@ namespace
 	void usage()
 	{
 		std::fprintf(stderr,
-		             "usage: implement --profile <file> [--interface vcan0] [--driver socketcan|virtual] [--port 0|<n>]\n"
+		             "usage: implement --profile <file> [--interface vcan0] [--driver socketcan|virtual] [--port 0|<n>] [--pool <file.iop>]\n"
 		             "                 [--section-control setpoint|actualSettable|perElement] [--log debug|info|warn|error]\n");
 	}
 }
 
 int main(int argc, char **argv)
 {
-	std::string profilePath, interface, driverName, sectionControl, logLevel = "warn";
+	std::string profilePath, interface, driverName, sectionControl, poolOverride, logLevel = "warn";
 	int port = -1;
 	for (int i = 1; i < argc; i++)
 	{
@@ -104,6 +104,10 @@ int main(int argc, char **argv)
 		{
 			port = std::atoi(argv[++i]);
 		}
+		else if (a == "--pool" && hasValue)
+		{
+			poolOverride = argv[++i];
+		}
 		else
 		{
 			usage();
@@ -120,6 +124,10 @@ int main(int argc, char **argv)
 	try
 	{
 		profile = sim::load_profile(profilePath);
+		if (!poolOverride.empty())
+		{
+			profile.pool = poolOverride;
+		}
 		if (!sectionControl.empty() && !sim::section_control_from_string(sectionControl, profile.sectionControl))
 		{
 			std::fprintf(stderr, "--section-control must be setpoint, actualSettable or perElement\n");

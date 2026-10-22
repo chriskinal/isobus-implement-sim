@@ -61,6 +61,8 @@ jobs:
         run: python3 tests/scenario_vt.py build/implement build/vt_stub vcan0
       - name: Phase 5. Rates and totals against a headless task controller on vcan0
         run: python3 tests/scenario_rates.py build/implement build/tc_stub vcan0
+      - name: Phase 7. Auxiliary functions and a joystick on the headless terminal
+        run: python3 tests/scenario_aux.py build/implement build/vt_stub build/aux_input vcan0
       - name: Phases 1 and 2. Every profile against AOG-TaskController on vcan0
         run: python3 tests/scenario_tc.py --tc aog-tc/build/AOG-TaskController --implement build/implement --iface vcan0 --keep-log phase1-tc.log
       - name: Phase 4. The faults, against AOG-TaskController and the headless terminal

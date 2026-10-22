@@ -70,6 +70,7 @@ namespace sim
 		void on_key(const isobus::VirtualTerminalClient::VTKeyEvent &event, const char *source);
 		void on_value(const isobus::VirtualTerminalClient::VTChangeNumericValueEvent &event);
 		void on_mask(const isobus::VirtualTerminalClient::VTChangeActiveMaskEvent &event);
+		void on_aux(const isobus::VirtualTerminalClient::AuxiliaryFunctionEvent &event);
 		void act_on_key(std::uint16_t objectId);
 		void show_mask(std::uint16_t maskId);
 		void update_screen();
@@ -90,6 +91,7 @@ namespace sim
 		std::string poolPath;
 		std::string versionLabel;
 		bool behaviour = false; ///< The pool is pools/base.iop, whose objects we know
+		bool auxPool = false; ///< The pool is pools/aux_functions.iop: its functions drive master, auto and the rate
 		std::mutex vtMutex; ///< Around the helper and every send
 		std::mutex sessionMutex; ///< update() against leave, rejoin and reupload, which run on the command thread
 		std::vector<Alarm> alarms;

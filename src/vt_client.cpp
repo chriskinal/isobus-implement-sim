@@ -1,6 +1,7 @@
 #include "vt_client.hpp"
 #include "tc_client.hpp"
 
+#include "../pools/aux_functions_ids.hpp"
 #include "../pools/base_pool_ids.hpp"
 #include "isobus/isobus/can_network_manager.hpp"
 #include "isobus/utility/iop_file_interface.hpp"
@@ -78,12 +79,14 @@ namespace sim
 		}
 		versionLabel = isobus::IOPFileInterface::hash_object_pool_to_version(pool);
 		const auto slash = poolPath.find_last_of('/');
-		behaviour = poolPath.substr(slash == std::string::npos ? 0 : slash + 1) == "base.iop";
+		const std::string file = poolPath.substr(slash == std::string::npos ? 0 : slash + 1);
+		behaviour = file == "base.iop";
+		auxPool = file == "aux_functions.iop";
 
 		uploaded = pool;
 		connect();
 		wantedMask = behaviour ? mainRunscreen_DataMask : 0xFFFF;
-		events.emit("vt", { { "connected", false }, { "pool", true }, { "path", poolPath }, { "bytes", pool.size() }, { "version", versionLabel }, { "behaviour", behaviour } });
+		events.emit("vt", { { "connected", false }, { "pool", true }, { "path", poolPath }, { "bytes", pool.size() }, { "version", versionLabel }, { "behaviour", behaviour }, { "auxFunctions", auxPool } });
 		return true;
 	}
 
@@ -99,6 +102,7 @@ namespace sim
 		client->get_vt_button_event_dispatcher().add_listener([this](const VTC::VTKeyEvent &e) { on_key(e, "button"); });
 		client->get_vt_change_numeric_value_event_dispatcher().add_listener([this](const VTC::VTChangeNumericValueEvent &e) { on_value(e); });
 		client->get_vt_change_active_mask_event_dispatcher().add_listener([this](const VTC::VTChangeActiveMaskEvent &e) { on_mask(e); });
+		client->get_auxiliary_function_event_dispatcher().add_listener([this](const VTC::AuxiliaryFunctionEvent &e) { on_aux(e); });
 		client->initialize(true);
 
 		helper = std::make_unique<isobus::VirtualTerminalClientUpdateHelper>(client);
@@ -340,6 +344,44 @@ namespace sim
 	{
 		currentMask = event.maskObjectID;
 		events.emit("mask", { { "mask", event.maskObjectID }, { "parent", event.parentObjectID }, { "errorObject", event.errorObjectID }, { "missingObjects", event.missingObjects }, { "errors", event.maskOrChildHasErrors || event.anyOtherError }, { "poolDeleted", event.poolDeleted } });
+	}
+
+	void TerminalClient::on_aux(const VTC::AuxiliaryFunctionEvent &event)
+	{
+		// An assigned input moved (docs/PLAN.md phase 7). value1 is the state or position, value2 the transition count or 0xFFFF.
+		events.emit("aux", { { "function", event.function.functionObjectID }, { "input", event.function.inputObjectID }, { "type", static_cast<int>(event.function.functionType) }, { "value1", event.value1 }, { "value2", event.value2 } });
+		if (!auxPool)
+		{
+			return;
+		}
+		std::lock_guard<std::mutex> lock(modelMutex);
+		switch (event.function.functionObjectID)
+		{
+			case AUXN_FUNCTION_ONOFF: // a latching on/off: the master
+				for (std::size_t b = 0; b < model.boom_count(); b++)
+				{
+					model.set_master(b, event.value1 != 0);
+				}
+				break;
+			case AUXN_FUNCTION_ONOFF_TOGGLE: // each press toggles auto/manual
+				if (event.value1 != 0)
+				{
+					const bool wanted = !model.boom(0).autoMode;
+					for (std::size_t b = 0; b < model.boom_count(); b++)
+					{
+						model.set_auto(b, wanted);
+					}
+				}
+				break;
+			case AUXN_FUNCTION_PLUS: // a press steps the operator's rate up by a tenth
+				if (event.value1 != 0 && model.product_count() > 0)
+				{
+					model.set_operator_rate(0, model.product(0).operatorRate * 1.1);
+				}
+				break;
+			default:
+				break;
+		}
 	}
 
 	void TerminalClient::show_mask(std::uint16_t maskId)

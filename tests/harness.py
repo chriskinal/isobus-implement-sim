@@ -382,3 +382,51 @@ class TcStub:
         except subprocess.TimeoutExpired:
             self.proc.kill()
         self.poll()
+
+
+class AuxInput:
+    """tools/aux_input: a simulated joystick on a SocketCAN interface, driven from stdin."""
+
+    def __init__(self, binary, iface, pool="pools/aux_inputs.iop"):
+        self.proc = subprocess.Popen([binary, "--interface", iface, "--pool", pool], stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        os.set_blocking(self.proc.stdout.fileno(), False)
+        os.set_blocking(self.proc.stderr.fileno(), False)
+        self.buf = b""
+        self.err = b""
+        self.events = []
+        self.connected = False
+
+    def poll(self):
+        r, _, _ = select.select([self.proc.stdout, self.proc.stderr], [], [], 0)
+        if self.proc.stderr in r:
+            self.err += self.proc.stderr.read() or b""
+        if self.proc.stdout in r:
+            self.buf += self.proc.stdout.read() or b""
+            while b"\n" in self.buf:
+                line, self.buf = self.buf.split(b"\n", 1)
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                self.events.append(e)
+                if e["event"] == "vt":
+                    self.connected = e["connected"]
+
+    def send(self, command):
+        self.proc.stdin.write((command + "\n").encode())
+        self.proc.stdin.flush()
+
+    def find(self, event, since=0, **match):
+        return [e for e in self.events[since:] if e["event"] == event and all(e.get(k) == v for k, v in match.items())]
+
+    def stop(self):
+        try:
+            self.send("quit")
+        except (OSError, ValueError):
+            pass
+        try:
+            self.proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+        self.poll()

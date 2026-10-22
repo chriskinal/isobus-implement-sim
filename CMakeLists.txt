@@ -82,3 +82,8 @@ target_link_libraries(vt_stub PRIVATE isobus::Isobus isobus::HardwareIntegration
 add_executable(tc_stub tools/tc_stub.cpp ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
 target_include_directories(tc_stub PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
 target_link_libraries(tc_stub PRIVATE isobus::Isobus isobus::HardwareIntegration isobus::Utility nlohmann_json::nlohmann_json Threads::Threads)
+
+# A simulated auxiliary input device, a joystick (phase 7)
+add_executable(aux_input tools/aux_input.cpp ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
+target_include_directories(aux_input PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
+target_link_libraries(aux_input PRIVATE isobus::Isobus isobus::HardwareIntegration isobus::Utility nlohmann_json::nlohmann_json Threads::Threads)

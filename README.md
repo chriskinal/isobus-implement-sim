@@ -8,8 +8,9 @@ Each implement comes from a profile file (booms, sections, rates, screens), is d
 commands, reports what the system under test did as events, and can misbehave on demand: drop
 off the bus, restart, upload a new pool, answer late.
 
-**Status:** phase 5 of [docs/PLAN.md](docs/PLAN.md): a task controller client and a terminal
-client built from a profile, driven by commands, with rates, totals and faults on demand. The DDOP comes from the profile's booms,
+**Status:** phase 7 of [docs/PLAN.md](docs/PLAN.md), with phase 6 (capture and replay) still
+to do: a task controller client and a terminal client built from a profile, driven by
+commands, with rates, totals, faults on demand and auxiliary functions. The DDOP comes from the profile's booms,
 sections and products; sections follow the task controller's setpoints after the profile's
 delay; the profile's pool goes to a terminal, with the stack's seeder screen behind it for now;
 commands arrive on stdin or a TCP port and events go out as JSON lines; the implement can go
@@ -25,7 +26,8 @@ build/implement --profile profiles/sprayer-24.json --interface vcan0
 ```
 
 Options: `--driver virtual` for the stack's in-process bus (the only one on macOS),
-`--port 0` (or a number) to take commands on a local TCP port as well as stdin,
+`--port 0` (or a number) to take commands on a local TCP port as well as stdin, `--pool <file.iop>`
+to show another pool than the profile's (one extracted from a capture, or `pools/aux_functions.iop`),
 `--section-control setpoint|actualSettable|perElement` to override the profile's section
 control method, `--log debug|info|warn|error` for the stack's log on stderr. Events are one
 JSON object a line on stdout and to every TCP client, for example:
@@ -58,7 +60,8 @@ prints its element tree and any broken child references. `build/vt_stub --interf
 a headless virtual terminal for the scenarios: it takes the implement's pool and injects key
 presses and values from stdin. `build/tc_stub --interface vcan0` is a headless task controller
 that takes any DDOP, sends set-value, request and measurement commands from stdin, and prints
-every value the implement reports.
+every value the implement reports. `build/aux_input --interface vcan0` is a joystick with a
+button and a slider for AUX-N, driven from stdin.
 
 ## Tests
 

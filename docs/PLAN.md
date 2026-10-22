@@ -254,6 +254,22 @@ and one simulated hectare at 12 km/h gives 10 001 m², 150.0 l applied, the tank
 same, with the task controller reading the totals within 2 %. No open task controller sends
 a rate yet; this is the tool until one does.
 
+**Phase 6 (2026-10-22).** Not built in this session. The pieces it needs are known: the
+stack's clients send a DDOP as process data with the first byte 0x61 and a pool as ECU-to-VT
+messages with the first byte 0x11, both over the (extended) transport protocol, and
+`build-linux/capture-sprayer.log` (not committed) is a `candump -L` recording of the simulator
+against both stubs to test an extractor on. The simulator already takes an extracted pool
+with `--pool <file.iop>`.
+
+**Phase 7 record (2026-10-22).** Built as far as a headless terminal allows. The terminal
+client reports every auxiliary function event (`aux`: function, input, type, values) for any
+pool, and with `--pool pools/aux_functions.iop` (the stack's example pool, MIT) acts on them:
+the on/off function is the master, the toggle is auto/manual, plus steps the operator's rate.
+`tools/aux_input` is a joystick with a button and a slider on the stack's example input pool,
+driven from stdin. `tests/scenario_aux.py` checks that both reach `vt_stub` and that the
+joystick takes its inputs; the stack's VT server base has no AUX-N, so the assignment itself,
+"made on a terminal, stored and used", is checked by hand on AgIsoVirtualTerminal.
+
 ## 9. Who uses it
 
 | Project | For |

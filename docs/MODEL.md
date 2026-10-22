@@ -23,8 +23,9 @@ Each boom carries its own condensed work state objects and its own totals, so a 
 machine is two independent section sets to the task controller.
 
 **Coordinates.** Millimetres. X positive forward, so a boom behind the hitch has a negative X.
-Section Y offsets are the section centres, left to right in profile order; section 1 is the
-first in the list. Which sign is left is open item 1.
+Y positive to the right, seen from above with the machine pointing up (open item 1). Section Y
+offsets are the section centres; section 1 is the first in the list and the profiles list them
+left to right, so section 1 has the most negative Y, as in the stack's examples.
 
 ## 2. Section control
 
@@ -92,11 +93,14 @@ the alarm changes to empty, and the sections stay as commanded: a real machine k
 open with nothing to spray. The `bin <level> [product]` command and `fill` refill. Content is
 settable in the DDOP, as the stack's examples have it, so a TC that writes a level is accepted.
 
-| `unit` | Capacity, content | Application total (trip) | Lifetime total | DDI units |
-|---|---|---|---|---|
-| `l` | 73, 72 | 80 | 325 | ml |
-| `kg` | 76, 75 | 81 | 266 | g |
-| `seeds` | 79, 78 | 82 | 267 | count |
+| `unit` | Capacity, content (DDI unit) | Application total, trip (DDI unit) | Lifetime total |
+|---|---|---|---|
+| `l` | 73, 72 (ml) | 80 (l); 351 is the same in ml | 325 |
+| `kg` | 76, 75 (g) | 81 (kg); 352 is the same in g | 266 |
+| `seeds` | 79, 78 (count) | 82 (count) | 267 |
+
+The trip totals in whole litres and kilograms (80, 81) are the ones every task controller
+knows; the millilitre and gram ones (351, 352) are newer and ship beside them.
 
 ## 5. Totals
 
@@ -181,13 +185,16 @@ seconds.
 
 ## 11. Open items
 
-1. **Y sign.** The stack's examples put section 1 at the most negative Y and call it the left.
-   ISO 11783-7's frame is right-handed with X forward and Z up, which puts positive Y on the
-   left, so read strictly section 1 is the rightmost. Neither AOG-TaskController nor the stack
-   says which it assumes. Pick one, write it in the profile documentation, and make the
-   `sprayer-120ft` profile (unequal widths) the test that shows a mirrored implement.
-2. **DDI unit scalings** (sections 3 and 4) are from memory of the DDI database. Check each
-   against <https://www.isobus.net/isobus/dDEntity> before phase 5 and against what the TC
-   displays.
+1. **Y sign.** Settled 2026-10-22 from two secondary sources, since neither AOG-TaskController
+   nor the stack states it and the ISO text is not to hand: AgGateway's ADAPT equipment
+   discussion (which says its frame is shared with ISO 11783) and CNH's ISOXML implementation
+   guide both have positive Y to the right of the direction of travel, negative to the left.
+   The stack's examples agree (section 1 at the most negative Y, called the left). Still worth
+   a check against ISO 11783-10's own figure when someone has it; the `sprayer-120ft` profile
+   (unequal widths) is the test that shows a mirrored implement either way.
+2. **DDI unit scalings.** Checked against <https://www.isobus.net/isobus/dDEntity> on
+   2026-10-22: 6 and 7 are mg/m², 11 and 12 are 0.001 /m², 72 and 73 ml, 75 g, 78 count, 80 l
+   (not ml). Still to check there: 1 and 2 (0.01 mm³/m² from the stack's comments), 193 and 194
+   (Pa), 415 to 420 (ppm), and what the TC under test displays for each.
 3. **Error state.** No open task controller handles the `10` (error) section state today.
    The seeder's blocked row and the sprayer's blocked nozzle will show what each does with it.

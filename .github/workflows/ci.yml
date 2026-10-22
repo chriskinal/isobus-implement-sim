@@ -1,0 +1,29 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build can-utils
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build
+      - name: Virtual CAN
+        run: |
+          sudo modprobe vcan
+          sudo ip link add vcan0 type vcan
+          sudo ip link set vcan0 up
+      - name: The seeder example claims an address on vcan0
+        run: tests/phase0_vcan.sh build/seeder_example/SeederExample vcan0

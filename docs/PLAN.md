@@ -103,7 +103,7 @@ Probes read these to check what the system under test did.
 |---|---|---|
 | `fault silent <s>` | Stops sending for s seconds, then carries on mid-session | TC and VT timeouts; recovery without a new handshake |
 | `fault restart` | Leaves and rejoins: new address claim, maintenance messages with the init bit | Session restart; stored pools and DDOP |
-| `fault resume` | Rejoins without the init bit, as after a terminal reboot it missed | The VT server gap espVT found |
+| `fault resume` | Not an implement command after all: it is a terminal reboot the implement never noticed, so the scenario restarts the terminal within the client's timeout instead (phase 4 record) | The VT server gap espVT found |
 | `fault version <label>` | Uploads a changed pool under a new version label | Stored-pool replacement |
 | `fault bigpool <kB>` | Pads the pool to a size | Upload timing over ETP; a terminal's memory |
 | `fault slow <ms>` | Delays every reply | Timeouts on the other side |
@@ -205,6 +205,38 @@ and values still coming out as events. Commands `alarm`, `key`, `mask`, `value` 
 stack's server base, 480 x 480, pools in memory, driven from stdin; `tests/scenario_vt.py`
 runs the planter against it on `vcan0`, in CI too. Every profile shows `base.iop` until the
 machines' own pools exist (SEEDER.md and SPRAYER.md section 6).
+
+**Phase 4 record (2026-10-22).** Done. `src/fault_driver.cpp` wraps the CAN driver: `fault
+silent <s>` drops every outgoing frame, `fault slow <ms>` holds each one, `fault busoff [n]`
+writes error frames. `fault restart` stops the terminal client, then the task controller
+client, deactivates the control function and rejoins with a fresh address claim; `fault
+version <label>` and `fault bigpool <kB>` upload the pool again under another label, padded
+with unreferenced number variables; `fault ddop bad` re-uploads a truncated, scrambled DDOP;
+`fault conflict [address]` sends an address claim for the task controller's address from a
+second identity. `tests/scenario_faults.py` runs them all against AOG-TaskController and
+`vt_stub` on `vcan0`, in CI too. What each showed:
+
+- 150 ms on every frame: the sessions survive, section latency grows by about it.
+- Silence: AOG-TaskController drops the client after 2.6 s. After 3 s of silence the
+  implement carried on and the sections caught up; after 12 s the task controller had
+  dropped it, and when the implement resumed, the stack's client never noticed (it watches
+  the task controller's status message, which keeps coming) and the task controller ignored
+  it: no section followed until a restart. Both sides' finding.
+- Restart: the task controller re-registers in 7 to 8 s (the 6 s start-up delay); the
+  terminal answers the load-version with the stored pool and the client needs no upload.
+- A new version label is stored by the terminal as `v2test ` (padded to 7); the store
+  arrives twice. A pool of 240 kB uploads in 30 s on `vcan0`.
+- The corrupted DDOP: the stack's client deactivates, deletes, uploads and asks to activate;
+  AOG-TaskController logs "Binary device property object has invalid length ... Failed to
+  deserialize" and stays up; the client ends disconnected and a restart recovers it.
+- Error frames: nobody cares, as expected without an adapter that goes bus-off.
+- Conflict: a claim for the task controller's address by another identity changed nothing
+  visible; sections followed 0.3 s later. An earlier version of this fault sent the
+  implement's own NAME from that address, which the task controller's stack read as the
+  implement moving to its own address and lost it: an address change, not a conflict.
+- Once, in one run of four, the implement stopped answering commands after a restart that
+  followed the bad DDOP; the run with `HARNESS_GDB=1` (the harness attaches gdb to a silent
+  implement) did not reproduce it. Open item.
 
 ## 9. Who uses it
 

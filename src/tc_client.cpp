@@ -95,7 +95,7 @@ namespace sim
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
-		isobus::NAME name(0);
+		name = isobus::NAME(0);
 		name.set_arbitrary_address_capable(true);
 		name.set_industry_group(2);
 		name.set_device_class(profile.type == "sprayer" ? 6 : 4); // ISO 11783-5 IG2: 4 planters and seeders, 6 sprayers
@@ -108,6 +108,16 @@ namespace sim
 
 		pool = build_ddop(profile, name, "0.1.0");
 
+		connect();
+
+		std::vector<std::uint8_t> binary;
+		pool.pool->generate_binary_object_pool(binary);
+		events.emit("profile", { { "name", profile.name }, { "type", profile.type }, { "booms", profile.booms.size() }, { "sections", profile.total_sections() }, { "products", profile.products.size() }, { "sectionControl", to_string(profile.sectionControl) }, { "ddopObjects", pool.objectCount }, { "ddopBytes", binary.size() }, { "structureLabel", pool.structureLabel } });
+		return true;
+	}
+
+	void ImplementClient::connect()
+	{
 		using P = isobus::NAME::NAMEParameters;
 		const std::vector<isobus::NAMEFilter> tcFilters = {
 			isobus::NAMEFilter(P::FunctionCode, static_cast<std::uint8_t>(isobus::NAME::Function::TaskController)),
@@ -137,11 +147,90 @@ namespace sim
 		speed->get_ground_based_machine_speed_data_event_publisher().add_listener([this](const std::shared_ptr<isobus::GroundBasedSpeedData> data, bool) { on_speed(1, data->get_machine_speed()); });
 		speed->get_wheel_based_machine_speed_data_event_publisher().add_listener([this](const std::shared_ptr<isobus::WheelBasedMachineSpeedData> data, bool) { on_speed(2, data->get_machine_speed()); });
 		speed->initialize();
+	}
 
+	std::shared_ptr<isobus::InternalControlFunction> ImplementClient::restart()
+	{
+		std::lock_guard<std::mutex> session(sessionMutex);
+		restarts++;
+		events.emit("restart", { { "count", restarts }, { "phase", "leaving" } });
+		if (client)
+		{
+			client->terminate();
+			client.reset();
+		}
+		events.emit("restart", { { "count", restarts }, { "phase", "clientStopped" } });
+		speed.reset();
+		if (ecu)
+		{
+			isobus::CANNetworkManager::CANNetwork.deactivate_control_function(ecu);
+			ecu.reset();
+		}
+		if (tc)
+		{
+			isobus::CANNetworkManager::CANNetwork.deactivate_control_function(tc);
+			tc.reset();
+		}
+		events.emit("restart", { { "count", restarts }, { "phase", "left" } });
+		lastConnected = false;
+		lastState = -1;
+		lastAddress = 0xFF;
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		connect();
+		events.emit("restart", { { "count", restarts }, { "phase", "rejoining" } });
+		return ecu;
+	}
+
+	bool ImplementClient::reupload_bad_ddop()
+	{
+		std::lock_guard<std::mutex> session(sessionMutex);
+		if (!client)
+		{
+			return false;
+		}
 		std::vector<std::uint8_t> binary;
 		pool.pool->generate_binary_object_pool(binary);
-		events.emit("profile", { { "name", profile.name }, { "type", profile.type }, { "booms", profile.booms.size() }, { "sections", profile.total_sections() }, { "products", profile.products.size() }, { "sectionControl", to_string(profile.sectionControl) }, { "ddopObjects", pool.objectCount }, { "ddopBytes", binary.size() }, { "structureLabel", pool.structureLabel } });
-		return true;
+		if (binary.size() < 64)
+		{
+			return false;
+		}
+		// Cut the tail off and scramble a stretch in the middle: object types and IDs no parser accepts
+		binary.resize(binary.size() - 40);
+		for (std::size_t i = binary.size() / 2; i < binary.size() / 2 + 24; i++)
+		{
+			binary[i] = static_cast<std::uint8_t>(0xA5 ^ i);
+		}
+		events.emit("ddop", { { "what", "bad" }, { "bytes", binary.size() } });
+		return client->reupload_device_descriptor_object_pool(binary.data(), static_cast<std::uint32_t>(binary.size()));
+	}
+
+	bool ImplementClient::claim_conflict(std::uint8_t address)
+	{
+		std::lock_guard<std::mutex> session(sessionMutex);
+		if (address == 0 && tc && tc->get_address_valid())
+		{
+			address = tc->get_address();
+		}
+		if (address == 0 || address >= 0xFE)
+		{
+			return false;
+		}
+		// An address claim (PGN 0xEE00, priority 6) from that address by a contender: our NAME with
+		// another identity number, so it is a second device and not us moving
+		isobus::CANMessageFrame frame;
+		frame.identifier = 0x18EEFF00u | address;
+		frame.isExtendedFrame = true;
+		frame.dataLength = 8;
+		frame.channel = 0;
+		isobus::NAME contender = name;
+		contender.set_identity_number((profile.identity + 1000) & 0x1FFFFF);
+		const std::uint64_t raw = contender.get_full_name();
+		for (int i = 0; i < 8; i++)
+		{
+			frame.data[i] = static_cast<std::uint8_t>(raw >> (8 * i));
+		}
+		events.emit("conflict", { { "address", address }, { "contenderIdentity", (profile.identity + 1000) & 0x1FFFFF } });
+		return isobus::CANHardwareInterface::transmit_can_frame(frame);
 	}
 
 	void ImplementClient::stop()
@@ -503,6 +592,11 @@ namespace sim
 
 	void ImplementClient::update()
 	{
+		std::lock_guard<std::mutex> session(sessionMutex);
+		if (!client || !speed)
+		{
+			return;
+		}
 		speed->update();
 
 		if (ecu && ecu->get_address_valid() && ecu->get_address() != lastAddress)

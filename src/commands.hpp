@@ -7,6 +7,7 @@
 #include "profile.hpp"
 #include "tc_client.hpp"
 #include "vt_client.hpp"
+#include "fault_driver.hpp"
 
 #include <atomic>
 #include <map>
@@ -31,6 +32,7 @@ namespace sim
 		/// @brief Runs one command line. Thread-safe. The result is the "command" event.
 		void execute(const std::string &line, const std::string &from);
 		void set_terminal(TerminalClient *t) { terminal = t; }
+		void set_fault_driver(std::shared_ptr<FaultyDriver> d) { faults = std::move(d); }
 
 	private:
 		void io_loop();
@@ -44,6 +46,7 @@ namespace sim
 		Events &events;
 		ImplementClient &client;
 		TerminalClient *terminal = nullptr;
+		std::shared_ptr<FaultyDriver> faults;
 		std::atomic_bool &running;
 		std::mutex executeMutex;
 		std::thread thread;

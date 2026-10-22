@@ -48,8 +48,9 @@ namespace sim
 		alarms.push_back({ "noTaskController", noTaskController_AlarmMask, p.alarmNoTaskController });
 	}
 
-	bool TerminalClient::start(std::shared_ptr<isobus::InternalControlFunction> ecu, const std::string &profileDirectory)
+	bool TerminalClient::start(std::shared_ptr<isobus::InternalControlFunction> ecuToUse, const std::string &profileDirectory)
 	{
+		ecu = ecuToUse;
 		if (profile.pool.empty())
 		{
 			events.emit("vt", { { "connected", false }, { "pool", false }, { "error", "the profile names no pool" } });
@@ -79,12 +80,21 @@ namespace sim
 		const auto slash = poolPath.find_last_of('/');
 		behaviour = poolPath.substr(slash == std::string::npos ? 0 : slash + 1) == "base.iop";
 
+		uploaded = pool;
+		connect();
+		wantedMask = behaviour ? mainRunscreen_DataMask : 0xFFFF;
+		events.emit("vt", { { "connected", false }, { "pool", true }, { "path", poolPath }, { "bytes", pool.size() }, { "version", versionLabel }, { "behaviour", behaviour } });
+		return true;
+	}
+
+	void TerminalClient::connect()
+	{
 		const std::vector<isobus::NAMEFilter> vtFilters = {
 			isobus::NAMEFilter(isobus::NAME::NAMEParameters::FunctionCode, static_cast<std::uint8_t>(isobus::NAME::Function::VirtualTerminal))
 		};
 		vt = isobus::CANNetworkManager::CANNetwork.create_partnered_control_function(0, vtFilters);
 		client = std::make_shared<VTC>(vt, ecu);
-		client->set_object_pool(0, pool.data(), static_cast<std::uint32_t>(pool.size()), versionLabel);
+		client->set_object_pool(0, uploaded.data(), static_cast<std::uint32_t>(uploaded.size()), versionLabel);
 		client->get_vt_soft_key_event_dispatcher().add_listener([this](const VTC::VTKeyEvent &e) { on_key(e, "softkey"); });
 		client->get_vt_button_event_dispatcher().add_listener([this](const VTC::VTKeyEvent &e) { on_key(e, "button"); });
 		client->get_vt_change_numeric_value_event_dispatcher().add_listener([this](const VTC::VTChangeNumericValueEvent &e) { on_value(e); });
@@ -116,8 +126,75 @@ namespace sim
 			helper->add_tracked_attribute(speed_OutNum, 8, 0.0036f);
 		}
 		helper->initialize();
-		wantedMask = behaviour ? mainRunscreen_DataMask : 0xFFFF;
-		events.emit("vt", { { "connected", false }, { "pool", true }, { "path", poolPath }, { "bytes", pool.size() }, { "version", versionLabel }, { "behaviour", behaviour } });
+		lastConnected = false;
+		currentMask = 0xFFFF;
+	}
+
+	void TerminalClient::leave()
+	{
+		std::lock_guard<std::mutex> session(sessionMutex);
+		if (!client)
+		{
+			return;
+		}
+		events.emit("vt", { { "phase", "leaving" } });
+		std::lock_guard<std::mutex> lock(vtMutex);
+		client->terminate();
+		events.emit("vt", { { "phase", "clientStopped" } });
+		helper.reset();
+		client.reset();
+		if (vt)
+		{
+			isobus::CANNetworkManager::CANNetwork.deactivate_control_function(vt);
+			vt.reset();
+		}
+		if (lastConnected)
+		{
+			lastConnected = false;
+			events.emit("vt", { { "connected", false }, { "pool", true }, { "left", true } });
+		}
+	}
+
+	void TerminalClient::rejoin(std::shared_ptr<isobus::InternalControlFunction> ecuToUse)
+	{
+		std::lock_guard<std::mutex> session(sessionMutex);
+		if (pool.empty())
+		{
+			return;
+		}
+		ecu = ecuToUse;
+		std::lock_guard<std::mutex> lock(vtMutex);
+		connect();
+	}
+
+	bool TerminalClient::reupload(const std::string &label, std::size_t padBytes)
+	{
+		if (!client)
+		{
+			return false;
+		}
+		uploaded = pool;
+		if (padBytes > 0)
+		{
+			// Padding: number variable objects nothing refers to, 7 bytes each, IDs from 28000 up (the base pool stops at 27010)
+			std::uint16_t id = 28000;
+			for (std::size_t added = 0; added < padBytes && id < 65000; added += 7, id++)
+			{
+				uploaded.push_back(static_cast<std::uint8_t>(id & 0xFF));
+				uploaded.push_back(static_cast<std::uint8_t>(id >> 8));
+				uploaded.push_back(21); // NumberVariable
+				for (int i = 0; i < 4; i++)
+				{
+					uploaded.push_back(0);
+				}
+			}
+		}
+		versionLabel = label.empty() ? isobus::IOPFileInterface::hash_object_pool_to_version(uploaded) : label;
+		events.emit("vt", { { "connected", false }, { "pool", true }, { "reupload", true }, { "bytes", uploaded.size() }, { "version", versionLabel } });
+		leave();
+		std::lock_guard<std::mutex> session(sessionMutex);
+		std::lock_guard<std::mutex> lock(vtMutex);
+		connect();
 		return true;
 	}
 
@@ -418,6 +495,7 @@ namespace sim
 
 	void TerminalClient::update()
 	{
+		std::lock_guard<std::mutex> session(sessionMutex);
 		if (!client)
 		{
 			return;

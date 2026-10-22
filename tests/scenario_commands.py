@@ -79,8 +79,11 @@ def main():
         e = imp.send("fault nozzle 5 clear")
         t = imp.wait(lambda i: i.actual() == "1" * 12, 2.0)
         check(t is not None, "cleared")
-        e = imp.send("fault silent 5")
-        check(e and not e["ok"] and "phase 4" in e["error"], "other faults are refused until phase 4")
+        e = imp.send("fault bogus")
+        check(e and not e["ok"], "an unknown fault is refused")
+        e = imp.send("fault slow 10")
+        check(e and e["ok"] and e["ms"] == 10, "fault slow 10 on the virtual driver")
+        imp.send("fault slow 0")
 
         # quit ends the process cleanly
         imp.send("quit", timeout=0.5)

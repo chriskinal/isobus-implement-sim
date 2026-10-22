@@ -131,7 +131,11 @@ class Implement:
     def send(self, command, timeout=2.0):
         """Sends one command over TCP; returns its "command" event (from the TCP stream), or None."""
         n = len(self.tcp_events)
-        self.sock.sendall((command + "\n").encode())
+        try:
+            self.sock.sendall((command + "\n").encode())
+        except OSError as e:
+            print("note  the implement's command link is gone (%s); exit code %s" % (e, self.proc.poll()), flush=True)
+            return None
         deadline = time.time() + timeout
         while time.time() < deadline:
             self.poll()
@@ -139,6 +143,13 @@ class Implement:
                 if e["event"] == "command" and e.get("command") == command:
                     return e
             time.sleep(0.005)
+        if os.environ.get("HARNESS_GDB") and self.proc.poll() is None:
+            # No answer: every thread's backtrace, for a hang in the implement (needs gdb and ptrace rights)
+            out = subprocess.run(["sudo", "gdb", "-p", str(self.proc.pid), "-batch", "-ex", "thread apply all bt 16"],
+                                 capture_output=True, text=True)
+            for line in out.stdout.splitlines():
+                if line.startswith(("Thread", "#")) and "libc.so" not in line and "libstdc++" not in line:
+                    print("gdb   " + line[:200], flush=True)
         return None
 
     def status(self):

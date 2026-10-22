@@ -8,6 +8,7 @@
 // stdin and from those clients; the stack's log goes to stderr.
 #include "commands.hpp"
 #include "events.hpp"
+#include "fault_driver.hpp"
 #include "model.hpp"
 #include "profile.hpp"
 #include "tc_client.hpp"
@@ -139,11 +140,12 @@ int main(int argc, char **argv)
 	std::signal(SIGINT, on_signal);
 	std::signal(SIGTERM, on_signal);
 
-	auto driver = CANDriverFactory::create(interface, driverName);
-	if (!driver)
+	auto realDriver = CANDriverFactory::create(interface, driverName);
+	if (!realDriver)
 	{
 		return 1;
 	}
+	auto driver = std::make_shared<sim::FaultyDriver>(realDriver);
 
 	sim::Events events;
 	sim::Model model(profile);
@@ -170,6 +172,7 @@ int main(int argc, char **argv)
 
 	sim::CommandServer commands(profile, model, modelMutex, events, client, running);
 	commands.set_terminal(&terminal);
+	commands.set_fault_driver(driver);
 	if (!commands.start(port))
 	{
 		std::fprintf(stderr, "could not listen on port %d\n", port);

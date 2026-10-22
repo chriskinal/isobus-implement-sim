@@ -52,8 +52,9 @@ namespace sim
 		const char *HELP =
 		  "switch <section> on|off | master on|off [boom] | auto on|off [boom] | rate <value> [product] | "
 		  "bin <level> [product] | tank <level> | fill [product] | depth <mm> | speed <km/h>|bus | "
-		  "fault row|nozzle <section> blocked|clear | alarm <name>|clear | key <object> | mask <id> | "
-		  "value <object> <n> | status | help | quit";
+		  "fault row|nozzle <section> blocked|clear | fault silent <s> | fault restart | fault resume | "
+		  "fault version <label> | fault bigpool <kB> | fault slow <ms> | fault conflict [address] | fault ddop bad | "
+		  "fault busoff [frames] | alarm <name>|clear | key <object> | mask <id> | value <object> <n> | status | help | quit";
 	}
 
 	CommandServer::CommandServer(const Profile &p, Model &m, std::mutex &mx, Events &ev, ImplementClient &c, std::atomic_bool &run) :
@@ -581,9 +582,96 @@ namespace sim
 			{
 				fail(error);
 			}
+			else if (a1 == "silent")
+			{
+				if (!faults || !number(a2, value) || value <= 0)
+				{
+					fail("fault silent <seconds>");
+				}
+				else
+				{
+					faults->silent_until(FaultyDriver::now_ms() + static_cast<std::uint64_t>(value * 1000.0));
+					result["seconds"] = value;
+				}
+			}
+			else if (a1 == "slow")
+			{
+				if (!faults || !number(a2, value) || value < 0)
+				{
+					fail("fault slow <ms>, 0 to clear");
+				}
+				else
+				{
+					faults->set_delay_ms(static_cast<std::uint32_t>(value));
+					result["ms"] = static_cast<std::uint32_t>(value);
+				}
+			}
+			else if (a1 == "busoff")
+			{
+				const std::uint32_t count = (number(a2, value) && value > 0) ? static_cast<std::uint32_t>(value) : 100;
+				result["sent"] = faults ? faults->flood_error_frames(count) : 0;
+			}
+			else if (a1 == "restart")
+			{
+				// The terminal client stops first: it must not be using the control function that goes away
+				const bool hadTerminal = terminal && terminal->active();
+				if (hadTerminal)
+				{
+					terminal->leave();
+				}
+				auto ecu = client.restart();
+				if (hadTerminal)
+				{
+					terminal->rejoin(ecu);
+				}
+			}
+			else if (a1 == "resume")
+			{
+				fail("resume is a terminal restart the implement does not notice: restart the terminal within its timeout instead (PLAN.md section 7)");
+			}
+			else if (a1 == "version" || a1 == "bigpool")
+			{
+				if (!terminal || !terminal->active())
+				{
+					fail("no terminal client: the profile's pool did not load");
+				}
+				else if (a1 == "version" && (a2.empty() || a2.size() > 7))
+				{
+					fail("fault version <label of up to 7 characters>");
+				}
+				else if (a1 == "bigpool" && (!number(a2, value) || value <= 0))
+				{
+					fail("fault bigpool <kB>");
+				}
+				else
+				{
+					terminal->reupload(a1 == "version" ? a2 : "", a1 == "bigpool" ? static_cast<std::size_t>(value * 1024.0) : 0);
+					result["label"] = a1 == "version" ? a2 : "hash";
+					if (a1 == "bigpool")
+					{
+						result["padBytes"] = static_cast<std::size_t>(value * 1024.0);
+						result["note"] = "padding is capped near 259 kB by the object ID range";
+					}
+				}
+			}
+			else if (a1 == "conflict")
+			{
+				const std::uint8_t address = (number(a2, value) && value > 0 && value < 254) ? static_cast<std::uint8_t>(value) : 0;
+				if (!client.claim_conflict(address))
+				{
+					fail("no address to claim: the task controller is not known and none was given");
+				}
+			}
+			else if (a1 == "ddop")
+			{
+				if (!client.reupload_bad_ddop())
+				{
+					fail("not connected to a task controller");
+				}
+			}
 			else
 			{
-				fail("fault " + a1 + " is not built yet (PLAN.md phase 4)");
+				fail("unknown fault; " + std::string(HELP));
 			}
 		}
 		else

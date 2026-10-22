@@ -57,6 +57,7 @@ add_executable(implement
   src/main.cpp
   src/tc_client.cpp
   src/vt_client.cpp
+  src/fault_driver.cpp
   src/commands.cpp
   ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
 target_include_directories(implement PRIVATE ${agisostack_SOURCE_DIR}/examples/common)

@@ -29,6 +29,14 @@ namespace sim
 		/// @brief Opens the bus on the driver, claims an address and starts the client. False if the bus cannot be opened.
 		bool start(std::shared_ptr<isobus::CANHardwarePlugin> driver);
 
+		/// @brief Leaves the bus and rejoins: a new address claim and a fresh task controller session (fault restart).
+		/// @returns the new internal control function, for the terminal client to rejoin with
+		std::shared_ptr<isobus::InternalControlFunction> restart();
+		/// @brief Uploads a corrupted copy of the DDOP (fault ddop bad).
+		bool reupload_bad_ddop();
+		/// @brief Sends an address claim for an address someone else holds (fault conflict). 0 means the task controller's.
+		bool claim_conflict(std::uint8_t address);
+
 		/// @brief Call every tick, with the model mutex not held. Reads speed, reports changes as events.
 		void update();
 
@@ -46,6 +54,7 @@ namespace sim
 		std::uint32_t tc_version() const { return (client && lastConnected) ? static_cast<std::uint32_t>(client->get_connected_tc_version()) : 0; }
 
 	private:
+		void connect();
 		static bool request_value_callback(std::uint16_t element, std::uint16_t ddi, std::int32_t &value, void *parent);
 		static bool value_command_callback(std::uint16_t element, std::uint16_t ddi, std::int32_t value, void *parent);
 		static bool default_process_data_callback(std::uint16_t element, std::uint16_t ddi, isobus::TaskControllerClient::DefaultProcessDataSettings &settings, void *parent);
@@ -75,5 +84,8 @@ namespace sim
 		std::vector<double> lastTarget;
 		double lastSpeedKmh = -1;
 		bool lastSpeedKnown = false;
+		isobus::NAME name{ 0 };
+		std::uint32_t restarts = 0;
+		std::mutex sessionMutex; ///< update() against restart and the other session faults, which run on the command thread
 	};
 }

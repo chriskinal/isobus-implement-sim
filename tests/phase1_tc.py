@@ -284,6 +284,14 @@ def main():
                 # Speed reaches the implement from the TC's tractor ECU
                 sp = [e for e in imp.events if e["event"] == "speed" and e.get("known")]
                 check(sp and abs(sp[-1]["kmh"] - 10.0) < 0.2, "speed from the bus: %s" % (sp[-1]["kmh"] if sp else "none"))
+                if not (sp and abs(sp[-1]["kmh"] - 10.0) < 0.2):
+                    allsp = [e for e in imp.events if e["event"] == "speed"]
+                    note("  speed events: %s" % ", ".join("%d:%s" % (e["t"], e["kmh"] if e.get("known") else "?") for e in allsp[-12:]))
+                    with open(tc.logpath) as f:
+                        lines = [l.strip() for l in f if any(k in l for k in ("speed", "Speed", "F2", "Process", "TECU", "subnet", "endpoint", "Error"))]
+                    for line in lines[-12:]:
+                        note("  TC: " + line)
+                    note("  implement stderr: " + imp.err.decode(errors="replace")[-600:].replace("\n", " | "))
             finally:
                 app.sections = 0
                 imp.stop()

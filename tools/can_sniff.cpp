@@ -57,7 +57,7 @@ namespace
 			case 0xFEF1: return "WheelSpeed(CCVS)";
 			case 0xFE48: return "WheelBasedSpeed";
 			case 0xFE49: return "GroundBasedSpeed";
-			case 0xFE4A: return "MachineSelectedSpeed";
+			case 0xF022: return "MachineSelectedSpeed";
 			case 0xFECA: return "DM1";
 			case 0xFED8: return "LanguageCommand";
 			case 0xFDA3: return "WorkingSetMaster";

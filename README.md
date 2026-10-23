@@ -71,7 +71,9 @@ a headless virtual terminal for the scenarios: it takes the implement's pool and
 presses and values from stdin. `build/tc_stub --interface vcan0` is a headless task controller
 that takes any DDOP, sends set-value, request and measurement commands from stdin, and prints
 every value the implement reports. `build/aux_input --interface vcan0` is a joystick with a
-button and a slider for AUX-N, driven from stdin.
+button and a slider for AUX-N, driven from stdin; on Linux, `--joystick /dev/i2c-1` drives it
+from a real stick too, the I2C joystick module at 0x5A (one stick, five buttons) on a
+Raspberry Pi's I2C pins: the X axis is the slider, button A the button.
 
 ## Releases
 

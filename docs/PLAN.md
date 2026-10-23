@@ -346,6 +346,20 @@ driven from stdin. `tests/scenario_aux.py` checks that both reach `vt_stub` and 
 joystick takes its inputs; the stack's VT server base has no AUX-N, so the assignment itself,
 "made on a terminal, stored and used", is checked by hand on AgIsoVirtualTerminal.
 
+**Phase 7 hardware (2026-10-22).** For the by-hand check, a real stick: an I2C joystick module
+(address 0x5A, one stick, buttons A to D and OK, its own microcontroller doing the reading) on
+the bench Raspberry Pi CM4, which has the CAN HAT. `aux_input --joystick /dev/i2c-1` reads it
+(`tools/i2c_joystick.hpp`), the X axis as the slider and button A as the button; every change
+prints a `joystick` event with the raw registers. The register map comes from the only
+description found, github.com/jitsengupta/PicoLibrary `JoystickHandle.py`: X and Y at 0x10 and
+0x11, a byte each; the buttons at 0x20 to 0x24 (OK, C, A, B, D) as event codes, 8 for not
+pressed. Not yet run against the module; OrbStack's kernel has no I2C, so only the build and
+the error paths are checked here. A firmware for a Feather M4 CAN Express was built and ran
+(address claimed, the stack on `millis()`) but was set aside for the CM4, which needs no second
+codebase. Still to do: a pool with both axes and all five buttons, and functions on the
+implement's side an analogue axis can be assigned to (the stack's example pool has only
+on/off, toggle and plus).
+
 **Phase 8 record (2026-10-22).** The packaging is built and `v0.1.0` is cut (2026-10-22,
 from 50a4a98, tarballs for x64 and arm64 on the GitHub release). `package.sh` makes `dist/isobus-implement-sim-<version>-linux-<arch>.tar.gz` from a build:
 the five binaries, profiles, pools, the scenario harness, the documents and a `RELEASE.md`

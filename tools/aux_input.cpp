@@ -8,8 +8,14 @@
 //   quit
 //
 //   aux_input --pool pools/aux_inputs.iop [--interface vcan0] [--driver socketcan|virtual]
+//             [--joystick /dev/i2c-1 [--joystick-address 0x5a]]
+//
+// With --joystick (Linux), the I2C joystick module of tools/i2c_joystick.hpp drives the inputs
+// too: its X axis is the slider, its A button the button. Every change of what the module
+// reports, the other axis and buttons included, prints a "joystick" event with the raw values.
 #include "../pools/aux_inputs_ids.hpp"
 #include "create_can_driver.hpp"
+#include "i2c_joystick.hpp"
 #include "isobus/hardware_integration/can_hardware_interface.hpp"
 #include "isobus/isobus/can_network_manager.hpp"
 #include "isobus/isobus/can_partnered_control_function.hpp"
@@ -66,7 +72,8 @@ namespace
 
 int main(int argc, char **argv)
 {
-	std::string interface, driverName, poolPath = "pools/aux_inputs.iop";
+	std::string interface, driverName, poolPath = "pools/aux_inputs.iop", joystickDevice;
+	long joystickAddress = I2CJoystick::DEFAULT_ADDRESS;
 	for (int i = 1; i < argc; i++)
 	{
 		const std::string a = argv[i];
@@ -82,9 +89,17 @@ int main(int argc, char **argv)
 		{
 			poolPath = argv[++i];
 		}
+		else if (a == "--joystick" && i + 1 < argc)
+		{
+			joystickDevice = argv[++i];
+		}
+		else if (a == "--joystick-address" && i + 1 < argc)
+		{
+			joystickAddress = std::strtol(argv[++i], nullptr, 0);
+		}
 		else
 		{
-			std::fprintf(stderr, "usage: aux_input [--pool pools/aux_inputs.iop] [--interface vcan0] [--driver socketcan|virtual]\n");
+			std::fprintf(stderr, "usage: aux_input [--pool pools/aux_inputs.iop] [--interface vcan0] [--driver socketcan|virtual] [--joystick /dev/i2c-1 [--joystick-address 0x5a]]\n");
 			return 2;
 		}
 	}
@@ -100,6 +115,29 @@ int main(int argc, char **argv)
 		std::fprintf(stderr, "cannot read the pool %s\n", poolPath.c_str());
 		return 1;
 	}
+	// The joystick is checked before anything goes on the bus, and its centre taken
+	I2CJoystick joystick;
+	JoystickAxis axisX, axisY;
+	I2CJoystick::Reading lastReading;
+	if (!joystickDevice.empty())
+	{
+		if (!joystick.open(joystickDevice, static_cast<std::uint8_t>(joystickAddress)))
+		{
+			std::fprintf(stderr, "joystick: %s\n", joystick.error().c_str());
+			return 1;
+		}
+		int sumX = 0, sumY = 0;
+		for (int i = 0; i < 8; i++)
+		{
+			joystick.read(lastReading);
+			sumX += lastReading.x;
+			sumY += lastReading.y;
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		}
+		axisX.set_centre(sumX / 8);
+		axisY.set_centre(sumY / 8);
+	}
+
 	auto driver = CANDriverFactory::create(interface, driverName);
 	if (!driver)
 	{
@@ -132,6 +170,10 @@ int main(int argc, char **argv)
 	client->add_auxiliary_input_object_id(AUXN_INPUT_BUTTON);
 	client->initialize(true);
 	emit("ready", { { "pool", poolPath }, { "bytes", pool.size() }, { "inputs", { { "button", AUXN_INPUT_BUTTON }, { "slider", AUXN_INPUT_SLIDER } } } });
+	if (!joystickDevice.empty())
+	{
+		emit("joystick", { { "device", joystickDevice }, { "address", joystickAddress }, { "centre", { { "x", axisX.centre }, { "y", axisY.centre } } } });
+	}
 
 	std::mutex commandMutex;
 	std::vector<std::string> pending;
@@ -147,9 +189,46 @@ int main(int argc, char **argv)
 	bool lastConnected = false, lastLearn = false, buttonPressed = false;
 	std::uint16_t transitions = 0;
 	std::uint16_t slider = 0;
+	bool joystickFailed = false;
 	while (running)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		I2CJoystick::Reading reading;
+		if (!joystickDevice.empty() && !joystick.read(reading))
+		{
+			if (!joystickFailed)
+			{
+				emit("joystick", { { "error", joystick.error() } });
+			}
+			joystickFailed = true;
+		}
+		else if (!joystickDevice.empty())
+		{
+			joystickFailed = false;
+			if (reading != lastReading)
+			{
+				nlohmann::json codes;
+				for (std::size_t b = 0; b < reading.codes.size(); b++)
+				{
+					codes[I2CJoystick::BUTTON_NAMES[b]] = reading.codes[b];
+				}
+				emit("joystick", { { "x", reading.x }, { "y", reading.y }, { "buttons", codes } });
+				lastReading = reading;
+			}
+			const std::uint16_t x = axisX.scale(reading.x);
+			if (x != slider)
+			{
+				slider = x;
+				client->update_auxiliary_input(AUXN_INPUT_SLIDER, slider, 0xFFFF);
+			}
+			const bool a = reading.pressed(2); // BUTTON_NAMES[2], button A
+			if (a != buttonPressed)
+			{
+				buttonPressed = a;
+				transitions++;
+				client->update_auxiliary_input(AUXN_INPUT_BUTTON, buttonPressed ? 1 : 0, transitions);
+			}
+		}
 		const bool connected = client->get_is_connected();
 		if (connected != lastConnected)
 		{

@@ -298,9 +298,30 @@ int main(int argc, char **argv)
 					lastScan = now;
 					for (const auto &entry : ws->get_object_tree())
 					{
-						if (entry.second && entry.second->get_object_type() == isobus::VirtualTerminalObjectType::NumberVariable)
+						if (!entry.second)
 						{
-							const std::uint32_t value = std::static_pointer_cast<isobus::NumberVariable>(entry.second)->get_value();
+							continue;
+						}
+						// Values the client changes: number variables, and output numbers, object pointers and bar graphs that hold their own
+						std::uint32_t value;
+						switch (entry.second->get_object_type())
+						{
+							case isobus::VirtualTerminalObjectType::NumberVariable:
+								value = std::static_pointer_cast<isobus::NumberVariable>(entry.second)->get_value();
+								break;
+							case isobus::VirtualTerminalObjectType::OutputNumber:
+								value = std::static_pointer_cast<isobus::OutputNumber>(entry.second)->get_value();
+								break;
+							case isobus::VirtualTerminalObjectType::ObjectPointer:
+								value = std::static_pointer_cast<isobus::ObjectPointer>(entry.second)->get_value();
+								break;
+							case isobus::VirtualTerminalObjectType::OutputLinearBarGraph:
+								value = std::static_pointer_cast<isobus::OutputLinearBarGraph>(entry.second)->get_value();
+								break;
+							default:
+								continue;
+						}
+						{
 							auto &known = lastValues[id];
 							auto found = known.find(entry.first);
 							if (found == known.end() || found->second != value)

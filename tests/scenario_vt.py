@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Phase 3 (docs/PLAN.md): the implement's screens on a virtual terminal. tools/vt_stub plays a
 headless terminal on vcan0; the implement uploads the stack's seeder pool, a key pressed on the
-terminal arrives as an event and switches a section, an alarm shows and is acknowledged.
+terminal arrives as an event and switches a section, an alarm shows and is acknowledged. Then
+the spreader's own pool (pools/spreader.xml): its soft keys drive the master, the rate and the
+pages, and its numbers follow the model.
 
     sudo modprobe vcan && sudo ip link add vcan0 type vcan && sudo ip link set vcan0 up
     tests/scenario_vt.py [build-linux/implement] [build-linux/vt_stub] [vcan0]
@@ -19,6 +21,12 @@ NO_SPEED_MASK, NO_TC_MASK = 2000, 2001
 SECTION1_BUTTON, AUTO_MANUAL_BUTTON = 6000, 6006
 SETTINGS_KEY, HOME_KEY = 5002, 5000
 STATISTICS_SELECTION = 21001
+
+# pools/spreader_ids.hpp
+SP_RUN_MASK, SP_TOTALS_MASK, SP_SPEED_ALARM = 1000, 1001, 2000
+SP_MASTER_KEY, SP_RATE_PLUS_KEY, SP_RATE_RESET_KEY, SP_TOTALS_KEY, SP_RUN_KEY = 5000, 5002, 5004, 5005, 5006
+SP_TARGET_RATE, SP_GROUND_SPEED, SP_BIN_LEVEL, SP_MASTER_STATUS = 12000, 12002, 12003, 27001
+SP_MASTER_ON, SP_MASTER_OFF = 11013, 11014
 
 
 def main():
@@ -123,7 +131,64 @@ def main():
         vt.stop()
         if vt.proc.returncode not in (0, None):
             note("vt_stub stderr: " + vt.err.decode(errors="replace")[-400:])
+    spreader(implement, stub, iface, profiles)
     return summary()
+
+
+def spreader(implement, stub, iface, profiles):
+    vt = VtStub(stub, iface)
+    imp = None
+    try:
+        wait(vt, None, 10.0, lambda: vt.find("ready"))
+        imp = Implement(implement, os.path.join(profiles, "spreader-9m.json"), iface=iface)
+        t = wait(vt, imp, 40.0, lambda: vt.pool == "loaded")
+        check(t is not None, "spreader: its pool reaches the terminal and parses (%s)" % ("%.1f s" % t if t else vt.pool))
+        t = wait(vt, imp, 5.0, lambda: vt.mask == SP_RUN_MASK)
+        check(t is not None, "spreader: the run screen is the active mask (%s)" % vt.mask)
+        t = wait(vt, imp, 3.0, lambda: any(c["value"] == 2000 for c in vt.find("change", id=SP_TARGET_RATE)))
+        check(t is not None, "spreader: the target rate on screen is the profile's 2000 kg/ha")
+        t = wait(vt, imp, 3.0, lambda: any(c["value"] == 8000 for c in vt.find("change", id=SP_BIN_LEVEL)))
+        check(t is not None, "spreader: the bin shows 8000 kg")
+
+        imp.send("speed 10")
+        t = wait(vt, imp, 3.0, lambda: any(c["value"] == 2778 for c in vt.find("change", id=SP_GROUND_SPEED)))
+        check(t is not None, "spreader: 10 km/h reaches the speed readout as 2778 mm/s")
+
+        vt.send("key %d" % SP_MASTER_KEY)
+        t = wait(vt, imp, 3.0, lambda: (imp.status() or {}).get("booms", [{}])[0].get("master") is False)
+        check(t is not None, "spreader: the master key turns the master off")
+        t = wait(vt, imp, 3.0, lambda: any(c["value"] == SP_MASTER_OFF for c in vt.find("change", id=SP_MASTER_STATUS)))
+        check(t is not None, "spreader: and the screen says MASTER OFF")
+        vt.send("key %d" % SP_MASTER_KEY)
+        t = wait(vt, imp, 3.0, lambda: (imp.status() or {}).get("booms", [{}])[0].get("master") is True)
+        check(t is not None, "spreader: pressed again, the master is back on")
+
+        vt.send("key %d" % SP_RATE_PLUS_KEY)
+        t = wait(vt, imp, 3.0, lambda: abs(((imp.status() or {}).get("products", [{}])[0].get("target") or 0) - 2200) < 1)
+        check(t is not None, "spreader: rate + steps the operator's rate to 2200 kg/ha")
+        vt.send("key %d" % SP_RATE_RESET_KEY)
+        t = wait(vt, imp, 3.0, lambda: abs(((imp.status() or {}).get("products", [{}])[0].get("target") or 0) - 2000) < 1)
+        check(t is not None, "spreader: rate 100% returns to 2000 kg/ha")
+
+        vt.send("key %d" % SP_TOTALS_KEY)
+        t = wait(vt, imp, 3.0, lambda: vt.mask == SP_TOTALS_MASK)
+        check(t is not None, "spreader: the totals key shows the totals screen (%s)" % vt.mask)
+        vt.send("key %d" % SP_RUN_KEY)
+        t = wait(vt, imp, 3.0, lambda: vt.mask == SP_RUN_MASK)
+        check(t is not None, "spreader: the run key goes back (%s)" % vt.mask)
+
+        e = imp.send("alarm noSpeed")
+        t = wait(vt, imp, 3.0, lambda: vt.mask == SP_SPEED_ALARM)
+        check(e and e["ok"] and t is not None, "spreader: the no-speed alarm shows its own mask (%s)" % vt.mask)
+        vt.send("ack")
+        t = wait(vt, imp, 3.0, lambda: vt.mask == SP_RUN_MASK)
+        check(t is not None, "spreader: acknowledged, back to the run screen (%s)" % vt.mask)
+        bad = [e for e in imp.events if e["event"] == "mask" and e.get("errors")]
+        check(not bad, "spreader: the terminal reported no object errors (%s)" % bad[:2])
+    finally:
+        if imp:
+            imp.stop()
+        vt.stop()
 
 
 def wait(vt, imp, seconds, cond):

@@ -16,9 +16,9 @@ sections and products; sections follow the task controller's setpoints after the
 delay; the profile's pool goes to a terminal, with the stack's seeder screen behind it for now;
 commands arrive on stdin or a TCP port and events go out as JSON lines; the implement can go
 silent, answer late, restart, re-upload its pool or a bad DDOP, and claim a held address. The
-machines are described in [docs/MODEL.md](docs/MODEL.md), [docs/SEEDER.md](docs/SEEDER.md)
-and [docs/SPRAYER.md](docs/SPRAYER.md); the shipped profiles are in `profiles/`, the pools in
-`pools/`.
+machines are described in [docs/MODEL.md](docs/MODEL.md), [docs/SEEDER.md](docs/SEEDER.md),
+[docs/SPRAYER.md](docs/SPRAYER.md) and [docs/SPREADER.md](docs/SPREADER.md); the shipped profiles are in `profiles/`, the pools in
+`pools/` (the spreader's screens are our own, built from PoolEdit XML: `pools/README.md`).
 
 ## Run
 

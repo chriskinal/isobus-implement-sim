@@ -182,6 +182,11 @@ run in CI from phase 1, before any scenario on `vcan0`.
 }
 ```
 
+`type` is `seeder`, `sprayer` or `spreader` ([SEEDER.md](SEEDER.md), [SPRAYER.md](SPRAYER.md),
+[SPREADER.md](SPREADER.md)). `elementNumbers`, optional, gives the DDOP's element numbers in the
+order they are built: the device (must be 0), the connector, each boom followed by its
+sections, then the bins; without it they are 0, 1, 2 and on. Real ECUs leave gaps
+(SPREADER.md section 3), so a task controller has to look element numbers up, not count them.
 `connector.type` is `drawbar` (ISO 6489-3, DDI 157 value 1), `threePoint` (ISO 730 mounted,
 value 3) or a number. `identity` goes into the NAME's identity number; the manufacturer code is
 PLAN.md open item 1. Lengths are millimetres, rates and levels in the product's unit, times in

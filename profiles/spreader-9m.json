@@ -1,0 +1,19 @@
+{
+  "name": "Spreader 9 m lime",
+  "type": "spreader",
+  "identity": 105,
+  "connector": { "type": "drawbar", "x": 0, "y": 0 },
+  "sectionControl": "setpoint",
+  "sectionDelay": { "on": 0.2, "off": 0.02 },
+  "booms": [
+    { "offsetX": -1998, "offsetY": 0, "offsetZ": 0,
+      "sections": { "count": 1, "width": 9144 } }
+  ],
+  "products": [
+    { "name": "Lime", "unit": "kg/ha", "rate": 2000, "min": 250, "max": 6000,
+      "tau": 2.0, "noise": 0.03, "boom": 0,
+      "bin": { "unit": "kg", "capacity": 8000, "level": 8000, "low": 0.1 } }
+  ],
+  "elementNumbers": [0, 5, 9, 823, 1148],
+  "pool": "pools/spreader.iop"
+}

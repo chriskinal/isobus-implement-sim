@@ -88,7 +88,7 @@ namespace sim
 	struct Profile
 	{
 		std::string name;
-		std::string type; ///< "seeder" or "sprayer"
+		std::string type; ///< "seeder", "sprayer" or "spreader"
 		std::uint32_t identity = 1;
 		Connector connector;
 		SectionControl sectionControl = SectionControl::Setpoint;
@@ -103,8 +103,13 @@ namespace sim
 		std::string pool;
 		SeederSettings seeder;
 		SprayerSettings sprayer;
+		/// The DDOP's element numbers in build order (device, connector, booms each followed by
+		/// their sections, bins); empty for 0, 1, 2 and on. Real ECUs leave gaps: a Raven
+		/// spreader used 0, 5, 9, 823, 1148.
+		std::vector<std::uint16_t> elementNumbers;
 
 		std::size_t total_sections() const;
+		std::size_t element_count() const { return 2 + booms.size() + total_sections() + products.size(); }
 	};
 
 	/// @brief Reads and checks a profile file. Throws std::runtime_error with the reason.

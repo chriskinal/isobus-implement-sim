@@ -210,9 +210,9 @@ namespace sim
 		Profile p;
 		p.name = need<std::string>(j, "name", "profile");
 		p.type = need<std::string>(j, "type", "profile");
-		if (p.type != "seeder" && p.type != "sprayer")
+		if (p.type != "seeder" && p.type != "sprayer" && p.type != "spreader")
 		{
-			fail("type must be seeder or sprayer");
+			fail("type must be seeder, sprayer or spreader");
 		}
 		p.identity = get<std::uint32_t>(j, "identity", 1);
 		if (j.contains("connector"))
@@ -282,6 +282,38 @@ namespace sim
 			p.alarmNoTaskController = get<double>(j.at("alarms"), "noTaskController", p.alarmNoTaskController);
 		}
 		p.pool = get<std::string>(j, "pool", "");
+		if (j.contains("elementNumbers"))
+		{
+			const auto &e = j.at("elementNumbers");
+			if (!e.is_array())
+			{
+				fail("elementNumbers must be a list of numbers");
+			}
+			for (const auto &n : e)
+			{
+				if (!n.is_number_unsigned() || n.get<std::uint32_t>() > 4094)
+				{
+					fail("elementNumbers must be 0 to 4094 (4095 means not available)");
+				}
+				const auto v = n.get<std::uint16_t>();
+				for (auto seen : p.elementNumbers)
+				{
+					if (seen == v)
+					{
+						fail("elementNumbers has " + std::to_string(v) + " twice");
+					}
+				}
+				p.elementNumbers.push_back(v);
+			}
+			if (p.elementNumbers.size() != p.element_count())
+			{
+				fail("elementNumbers needs " + std::to_string(p.element_count()) + " numbers, one each for the device, the connector, the booms, the sections and the bins");
+			}
+			if (p.elementNumbers[0] != 0)
+			{
+				fail("elementNumbers must start with 0, the device element");
+			}
+		}
 		if (j.contains("seeder"))
 		{
 			const auto &s = j.at("seeder");

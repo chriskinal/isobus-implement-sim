@@ -13,6 +13,7 @@ scrambles its DDI-to-element map (same record).
     tests/scenario_tc.py --tc ~/aog-tc-build/AOG-TaskController --implement build-linux/implement
 """
 import argparse
+import json
 import os
 import sys
 import time
@@ -25,6 +26,7 @@ PLAN = [
     ("planter-12", ["--section-control", "perElement"]),
     ("planter-24", []), ("planter-48", []), ("drill-6m", []),
     ("sprayer-24", []), ("sprayer-mounted-12", []), ("sprayer-120ft", []),
+    ("spreader-9m", []),
 ]
 RECORDED = [("airseeder-12m", []), ("sprayer-36-nozzle", [])]
 
@@ -96,8 +98,11 @@ def main():
                     note("  TC: " + line.strip())
             check(any(("with %d sections" % count) in l for l in lines), "TC registered %d sections" % count)
             mapped = [l for l in lines if "Mapped DDI" in l]
-            odd = [l for l in mapped if ("to element 2" not in l.split(")")[-1]) and any(("DDI %d " % d) in l for d in range(161, 177))]
-            check(not odd, "TC maps the condensed states to the boom element only" + ("" if not odd else ": " + odd[0].strip()))
+            with open(path) as f:
+                numbers = json.load(f).get("elementNumbers")
+            boom_element = numbers[2] if numbers else 2  # device, connector, then the first boom
+            odd = [l for l in mapped if ("to element %d" % boom_element) != l.split(")")[-1].strip() and any(("DDI %d " % d) in l for d in range(161, 177))]
+            check(not odd, "TC maps the condensed states to the boom element (%d) only" % boom_element + ("" if not odd else ": " + odd[0].strip()))
 
             # Alternate sections on; the actual follows after the on delay, from the implement's own clock
             pattern = sum(1 << i for i in range(0, count, 2))

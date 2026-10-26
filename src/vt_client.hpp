@@ -1,5 +1,5 @@
-// The virtual terminal client: the profile's pool on a terminal, the stack's seeder screen
-// with behaviour, any other pool shown as it is (docs/PLAN.md phase 3).
+// The virtual terminal client: the profile's pool on a terminal, the stack's seeder screen and
+// our spreader screens with behaviour, any other pool shown as it is (docs/PLAN.md phase 3).
 #pragma once
 
 #include "events.hpp"
@@ -72,8 +72,11 @@ namespace sim
 		void on_mask(const isobus::VirtualTerminalClient::VTChangeActiveMaskEvent &event);
 		void on_aux(const isobus::VirtualTerminalClient::AuxiliaryFunctionEvent &event);
 		void act_on_key(std::uint16_t objectId);
+		void act_on_spreader_key(std::uint16_t objectId);
 		void show_mask(std::uint16_t maskId);
 		void update_screen();
+		void update_spreader_screen();
+		void lay_out_sections();
 		void update_alarms();
 		void acknowledge_first_alarm();
 
@@ -90,7 +93,8 @@ namespace sim
 		std::vector<std::uint8_t> uploaded; ///< What goes to the terminal: the pool, padded if asked
 		std::string poolPath;
 		std::string versionLabel;
-		bool behaviour = false; ///< The pool is pools/base.iop, whose objects we know
+		bool behaviour = false; ///< The pool is pools/base.iop or pools/spreader.iop, whose objects we know
+		bool spreaderPool = false; ///< The pool is pools/spreader.iop
 		bool auxPool = false; ///< The pool is pools/aux_functions.iop: its functions drive master, auto and the rate
 		std::mutex vtMutex; ///< Around the helper and every send
 		std::mutex sessionMutex; ///< update() against leave, rejoin and reupload, which run on the command thread

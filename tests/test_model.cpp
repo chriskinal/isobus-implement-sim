@@ -72,6 +72,9 @@ static void test_profiles(const std::string &dir)
 
 	auto s12 = sim::load_profile(dir + "/sprayer-mounted-12.json");
 	CHECK(s12.total_sections() == 5 && s12.connector.type == 3, "sprayer-mounted-12");
+	auto sp9 = sim::load_profile(dir + "/spreader-9m.json");
+	CHECK(sp9.type == "spreader" && sp9.total_sections() == 1 && sp9.booms[0].width() == 9144, "spreader-9m geometry");
+	CHECK(sp9.elementNumbers.size() == 5 && sp9.elementNumbers[3] == 823, "spreader-9m element numbers");
 
 	// Overrides and errors
 	bool threw = false;
@@ -396,7 +399,7 @@ static void test_ddop(const std::string &dir)
 	isobus::NAME name(0);
 	name.set_identity_number(1);
 	name.set_manufacturer_code(1407);
-	const char *files[] = { "planter-12", "planter-24", "planter-48", "drill-6m", "airseeder-12m", "sprayer-24", "sprayer-36-nozzle", "sprayer-120ft", "sprayer-mounted-12" };
+	const char *files[] = { "planter-12", "planter-24", "planter-48", "drill-6m", "airseeder-12m", "sprayer-24", "sprayer-36-nozzle", "sprayer-120ft", "sprayer-mounted-12", "spreader-9m" };
 	for (const char *f : files)
 	{
 		auto p = sim::load_profile(dir + "/" + f + ".json");
@@ -511,6 +514,33 @@ static void test_ddop(const std::string &dir)
 	b.booms[0].sections[3].width += 1;
 	CHECK(sim::build_ddop(a, name, "0.1.0").structureLabel != sim::build_ddop(b, name, "0.1.0").structureLabel, "structure label follows the geometry");
 	CHECK(sim::build_ddop(a, name, "0.1.0").structureLabel == sim::build_ddop(a, name, "0.1.0").structureLabel, "structure label is stable");
+
+	// The profile's element numbers, gaps and all, in build order
+	auto sp = sim::load_profile(dir + "/spreader-9m.json");
+	auto spd = sim::build_ddop(sp, name, "0.1.0");
+	CHECK(spd.map.device == 0 && spd.map.connector == 5 && spd.map.booms[0] == 9 && spd.map.sections[0][0] == 823 && spd.map.bins[0] == 1148,
+	      "spreader element numbers %u %u %u %u %u", spd.map.device, spd.map.connector, spd.map.booms[0], spd.map.sections[0][0], spd.map.bins[0]);
+	std::size_t boom, index, product;
+	CHECK(spd.map.section_for(823, boom, index) && boom == 0 && index == 0, "section found by a sparse element number");
+	CHECK(spd.map.bin_for(1148, product) && product == 0 && !spd.map.bin_for(4, product), "bin found by a sparse element number, not by its index");
+	auto dense = sp;
+	dense.elementNumbers.clear();
+	CHECK(sim::build_ddop(dense, name, "0.1.0").structureLabel != spd.structureLabel, "structure label follows the element numbers");
+	const char *bad[] = { "[0,5,9,823]", "[1,5,9,823,1148]", "[0,5,9,9,1148]", "[0,5,9,823,4095]" };
+	for (const char *list : bad)
+	{
+		bool threw = false;
+		try
+		{
+			sim::parse_profile(std::string("{\"name\":\"x\",\"type\":\"spreader\",\"booms\":[{\"sections\":{\"count\":1,\"width\":9144}}],"
+			                               "\"products\":[{\"unit\":\"kg/ha\",\"rate\":2000,\"bin\":{\"capacity\":8000}}],\"elementNumbers\":") + list + "}");
+		}
+		catch (const std::runtime_error &)
+		{
+			threw = true;
+		}
+		CHECK(threw, "elementNumbers %s is refused", list);
+	}
 }
 
 int main(int argc, char **argv)

@@ -168,6 +168,10 @@ namespace sim
 			}
 			canon += std::to_string(p.connector.type) + "," + std::to_string(p.connector.x) + "," + std::to_string(p.connector.y);
 			canon += p.seeder.rowData ? "|rows" : "";
+			for (auto n : p.elementNumbers)
+			{
+				canon += "," + std::to_string(n);
+			}
 			std::uint32_t h = 2166136261u;
 			for (unsigned char c : canon)
 			{
@@ -262,17 +266,23 @@ namespace sim
 		const std::uint16_t m2 = b.presentation("m^2", 1.0f, 0);
 		const std::uint16_t seconds = b.presentation("s", 1.0f, 0);
 
-		std::uint16_t elementNumber = 0;
+		// Element numbers in build order: the profile's list, or 0, 1, 2 and on
+		std::size_t built = 0;
+		auto next_element = [&]() -> std::uint16_t {
+			const std::size_t i = built++;
+			return profile.elementNumbers.empty() ? static_cast<std::uint16_t>(i) : profile.elementNumbers.at(i);
+		};
 
 		// The device element
-		const std::uint16_t deviceEl = b.element(profile.type == "sprayer" ? "Sprayer" : "Seeder", elementNumber, 0, Element::Type::Device);
-		out.map.device = elementNumber++;
+		const char *deviceName = profile.type == "sprayer" ? "Sprayer" : (profile.type == "spreader" ? "Spreader" : "Seeder");
+		out.map.device = next_element();
+		const std::uint16_t deviceEl = b.element(deviceName, out.map.device, 0, Element::Type::Device);
 		b.process_data(deviceEl, "Actual Work State", ddi(DDI::ActualWorkState), NO_PRESENTATION, DEFAULT_SET, ON_CHANGE);
 		b.process_data(deviceEl, "Request Default PD", ddi(DDI::RequestDefaultProcessData), NO_PRESENTATION, 0, TOTAL);
 
 		// The connector
-		const std::uint16_t connectorEl = b.element("Connector", elementNumber, deviceEl, Element::Type::Connector);
-		out.map.connector = elementNumber++;
+		out.map.connector = next_element();
+		const std::uint16_t connectorEl = b.element("Connector", out.map.connector, deviceEl, Element::Type::Connector);
 		b.process_data(connectorEl, "Connector X", ddi(DDI::DeviceElementOffsetX), mm, SETTABLE, 0);
 		b.process_data(connectorEl, "Connector Y", ddi(DDI::DeviceElementOffsetY), mm, SETTABLE, 0);
 		b.property(connectorEl, "Connector Type", profile.connector.type, ddi(DDI::ConnectorType), NO_PRESENTATION);
@@ -282,8 +292,8 @@ namespace sim
 		{
 			const auto &boom = profile.booms[bi];
 			const std::string boomName = profile.booms.size() == 1 ? "Boom" : "Boom " + std::to_string(bi + 1);
-			const std::uint16_t boomEl = b.element(boomName, elementNumber, deviceEl, Element::Type::Function);
-			out.map.booms.push_back(elementNumber++);
+			out.map.booms.push_back(next_element());
+			const std::uint16_t boomEl = b.element(boomName, out.map.booms.back(), deviceEl, Element::Type::Function);
 			b.property(boomEl, "Offset X", boom.offsetX, ddi(DDI::DeviceElementOffsetX), mm);
 			b.property(boomEl, "Offset Y", boom.offsetY, ddi(DDI::DeviceElementOffsetY), mm);
 			b.property(boomEl, "Offset Z", boom.offsetZ, ddi(DDI::DeviceElementOffsetZ), mm);
@@ -319,8 +329,8 @@ namespace sim
 			for (std::size_t si = 0; si < boom.sections.size(); si++)
 			{
 				const auto &s = boom.sections[si];
-				const std::uint16_t sectionEl = b.element(s.name.substr(0, 32), elementNumber, boomEl, Element::Type::Section);
-				out.map.sections.back().push_back(elementNumber++);
+				out.map.sections.back().push_back(next_element());
+				const std::uint16_t sectionEl = b.element(s.name.substr(0, 32), out.map.sections.back().back(), boomEl, Element::Type::Section);
 				// Section offsets are from the device reference point: the boom's plus the section's
 				b.property(sectionEl, "Offset X", boom.offsetX + s.offsetX, ddi(DDI::DeviceElementOffsetX), mm);
 				b.property(sectionEl, "Offset Y", boom.offsetY + s.offsetY, ddi(DDI::DeviceElementOffsetY), mm);
@@ -353,8 +363,8 @@ namespace sim
 		{
 			const auto &p = profile.products[pi];
 			const RateDdis d = rate_ddis(p.unit);
-			const std::uint16_t binEl = b.element(p.name.substr(0, 32), elementNumber, deviceEl, Element::Type::Bin);
-			out.map.bins.push_back(elementNumber++);
+			out.map.bins.push_back(next_element());
+			const std::uint16_t binEl = b.element(p.name.substr(0, 32), out.map.bins.back(), deviceEl, Element::Type::Bin);
 			const std::uint16_t ratePres = rate_presentation(b, p);
 			const std::uint16_t contentPres = content_presentation(b, p);
 			const std::uint16_t totalPres = total_presentation(b, p);
@@ -369,7 +379,8 @@ namespace sim
 			b.process_data(binEl, "Applied Total", ddi(d.tripTotal), totalPres, DEFAULT_SET | SETTABLE, TOTAL);
 			b.process_data(binEl, "Lifetime Total", ddi(d.lifetimeTotal), totalPres, DEFAULT_SET, TOTAL);
 			b.process_data(binEl, "Rx Control State", ddi(DDI::PrescriptionControlState), NO_PRESENTATION, DEFAULT_SET | SETTABLE, ON_CHANGE | TIME);
-			b.property(binEl, "Operation Type", profile.type == "sprayer" ? 3 : 2, ddi(DDI::ActualCulturalPractice), NO_PRESENTATION);
+			// DDI 179: 1 fertilizing, 2 sowing and planting, 3 crop protection
+			b.property(binEl, "Operation Type", profile.type == "sprayer" ? 3 : (profile.type == "spreader" ? 1 : 2), ddi(DDI::ActualCulturalPractice), NO_PRESENTATION);
 			if (profile.type == "sprayer")
 			{
 				const std::uint16_t bar = b.presentation("bar", 0.00001f, 2);
@@ -378,7 +389,7 @@ namespace sim
 				b.process_data(binEl, "Setpoint Pressure", ddi(DDI::SetpointProductPressure), bar, DEFAULT_SET | SETTABLE, ON_CHANGE);
 				b.process_data(binEl, "Pressure", ddi(DDI::ActualProductPressure), bar, DEFAULT_SET, ON_CHANGE | TIME);
 			}
-			else if (profile.seeder.kind == "planter")
+			else if (profile.type == "seeder" && profile.seeder.kind == "planter")
 			{
 				b.process_data(binEl, "Setpoint Depth", ddi(DDI::SetpointSeedingDepth), mm, DEFAULT_SET | SETTABLE, ON_CHANGE);
 				b.process_data(binEl, "Actual Depth", ddi(DDI::ActualSeedingDepth), mm, DEFAULT_SET, ON_CHANGE | TIME);

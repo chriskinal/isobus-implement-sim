@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- The spreader's screens (profiles/spreader-9m.json), in PoolEdit's XML: open it in PoolEdit to
+     edit, then pools/build_pools.sh writes spreader.iop and spreader_ids.hpp. Every object has
+     an explicit id, which the terminal client uses; keep them when editing. Our own work, MIT. -->
+<objectpool dimension="480" fix_bitmap_path="" sk_height="60" sk_width="60" std_bitmap_path="">
+  <workingset background_colour="navy" id="0" name="spreader_WorkingSet" selectable="yes">
+    <include_object name="run_DataMask" role="active_mask"/>
+    <include_object name="designator_OutStr" pos_x="2" pos_y="18"/>
+  </workingset>
+
+  <!-- Run screen -->
+  <datamask background_colour="white" id="1000" name="run_DataMask">
+    <include_object name="run_SoftKeyMask" role="soft_key_mask"/>
+    <include_object name="titleBar_Rect" pos_x="0" pos_y="0"/>
+    <include_object name="runTitle_OutStr" pos_x="10" pos_y="8"/>
+    <include_object name="tcStatus_ObjPtr" pos_x="350" pos_y="12"/>
+    <include_object name="rateTitle_OutStr" pos_x="10" pos_y="52"/>
+    <include_object name="targetLabel_OutStr" pos_x="10" pos_y="76"/>
+    <include_object name="actualLabel_OutStr" pos_x="250" pos_y="76"/>
+    <include_object name="targetRate_OutNum" pos_x="10" pos_y="96"/>
+    <include_object name="actualRate_OutNum" pos_x="250" pos_y="96"/>
+    <include_object name="prescription_ObjPtr" pos_x="10" pos_y="148"/>
+    <include_object name="sections_Container" pos_x="10" pos_y="176"/>
+    <include_object name="master_Rect" pos_x="10" pos_y="238"/>
+    <include_object name="masterStatus_ObjPtr" pos_x="20" pos_y="252"/>
+    <include_object name="mode_Rect" pos_x="250" pos_y="238"/>
+    <include_object name="modeStatus_ObjPtr" pos_x="260" pos_y="252"/>
+    <include_object name="speedLabel_OutStr" pos_x="10" pos_y="300"/>
+    <include_object name="groundSpeed_OutNum" pos_x="10" pos_y="322"/>
+    <include_object name="speedUnit_OutStr" pos_x="130" pos_y="330"/>
+    <include_object name="binLabel_OutStr" pos_x="250" pos_y="300"/>
+    <include_object name="binLevel_OutNum" pos_x="250" pos_y="322"/>
+    <include_object name="binUnit_OutStr" pos_x="400" pos_y="330"/>
+    <include_object name="binLevel_BarGraph" pos_x="250" pos_y="360"/>
+    <include_object name="areaLabel_OutStr" pos_x="10" pos_y="400"/>
+    <include_object name="area_OutNum" pos_x="10" pos_y="422"/>
+    <include_object name="areaUnit_OutStr" pos_x="130" pos_y="430"/>
+  </datamask>
+
+  <!-- Totals screen -->
+  <datamask background_colour="white" id="1001" name="totals_DataMask">
+    <include_object name="totals_SoftKeyMask" role="soft_key_mask"/>
+    <include_object name="titleBar_Rect" pos_x="0" pos_y="0"/>
+    <include_object name="totalsTitle_OutStr" pos_x="10" pos_y="8"/>
+    <include_object name="totalAreaLabel_OutStr" pos_x="10" pos_y="60"/>
+    <include_object name="totalArea_OutNum" pos_x="250" pos_y="56"/>
+    <include_object name="appliedLabel_OutStr" pos_x="10" pos_y="110"/>
+    <include_object name="applied_OutNum" pos_x="250" pos_y="106"/>
+    <include_object name="lifetimeLabel_OutStr" pos_x="10" pos_y="160"/>
+    <include_object name="lifetime_OutNum" pos_x="250" pos_y="156"/>
+    <include_object name="distanceLabel_OutStr" pos_x="10" pos_y="210"/>
+    <include_object name="distance_OutNum" pos_x="250" pos_y="206"/>
+    <include_object name="workTimeLabel_OutStr" pos_x="10" pos_y="260"/>
+    <include_object name="workTime_OutNum" pos_x="250" pos_y="256"/>
+    <include_object name="totalsHint_OutStr" pos_x="10" pos_y="430"/>
+  </datamask>
+
+  <!-- Alarms: the same two causes as the base pool -->
+  <alarmmask acoustic_signal="high" background_colour="yellow" id="2000" name="speedAlarm_AlarmMask" priority="high">
+    <include_object name="alarm_SoftKeyMask" role="soft_key_mask"/>
+    <include_object name="alarmTitle_OutStr" pos_x="10" pos_y="20"/>
+    <include_object name="noSpeed_OutStr" pos_x="10" pos_y="120"/>
+    <include_object name="alarmHint_OutStr" pos_x="10" pos_y="400"/>
+  </alarmmask>
+  <alarmmask acoustic_signal="high" background_colour="yellow" id="2001" name="tcAlarm_AlarmMask" priority="medium">
+    <include_object name="alarm_SoftKeyMask" role="soft_key_mask"/>
+    <include_object name="alarmTitle_OutStr" pos_x="10" pos_y="20"/>
+    <include_object name="noTaskController_OutStr" pos_x="10" pos_y="120"/>
+    <include_object name="alarmHint_OutStr" pos_x="10" pos_y="400"/>
+  </alarmmask>
+
+  <!-- The section bar: eight slots; the client sizes and places the ones the profile has -->
+  <container height="50" hidden="no" id="3000" name="sections_Container" width="460">
+    <include_object name="section1_Rect" pos_x="0" pos_y="0"/>
+    <include_object name="section2_Rect" pos_x="58" pos_y="0"/>
+    <include_object name="section3_Rect" pos_x="116" pos_y="0"/>
+    <include_object name="section4_Rect" pos_x="174" pos_y="0"/>
+    <include_object name="section5_Rect" pos_x="232" pos_y="0"/>
+    <include_object name="section6_Rect" pos_x="290" pos_y="0"/>
+    <include_object name="section7_Rect" pos_x="348" pos_y="0"/>
+    <include_object name="section8_Rect" pos_x="406" pos_y="0"/>
+  </container>
+
+  <!-- Soft keys -->
+  <softkeymask background_colour="silver" id="4000" name="run_SoftKeyMask">
+    <include_object name="master_Key"/>
+    <include_object name="autoManual_Key"/>
+    <include_object name="ratePlus_Key"/>
+    <include_object name="rateMinus_Key"/>
+    <include_object name="rateReset_Key"/>
+    <include_object name="totals_Key"/>
+  </softkeymask>
+  <softkeymask background_colour="silver" id="4001" name="totals_SoftKeyMask">
+    <include_object name="run_Key"/>
+    <include_object name="resetTotals_Key"/>
+  </softkeymask>
+  <softkeymask background_colour="silver" id="4002" name="alarm_SoftKeyMask">
+    <include_object name="acknowledge_Key"/>
+  </softkeymask>
+
+  <key background_colour="white" id="5000" key_code="1" name="master_Key">
+    <include_object name="masterKey_OutStr" pos_x="2" pos_y="22"/>
+  </key>
+  <key background_colour="white" id="5001" key_code="2" name="autoManual_Key">
+    <include_object name="autoKey_OutStr" pos_x="2" pos_y="22"/>
+  </key>
+  <key background_colour="white" id="5002" key_code="3" name="ratePlus_Key">
+    <include_object name="ratePlusKey_OutStr" pos_x="2" pos_y="14"/>
+  </key>
+  <key background_colour="white" id="5003" key_code="4" name="rateMinus_Key">
+    <include_object name="rateMinusKey_OutStr" pos_x="2" pos_y="14"/>
+  </key>
+  <key background_colour="white" id="5004" key_code="5" name="rateReset_Key">
+    <include_object name="rateResetKey_OutStr" pos_x="2" pos_y="14"/>
+  </key>
+  <key background_colour="white" id="5005" key_code="6" name="totals_Key">
+    <include_object name="totalsKey_OutStr" pos_x="2" pos_y="22"/>
+  </key>
+  <key background_colour="white" id="5006" key_code="7" name="run_Key">
+    <include_object name="homeKey_OutStr" pos_x="2" pos_y="22"/>
+  </key>
+  <key background_colour="white" id="5007" key_code="8" name="resetTotals_Key">
+    <include_object name="resetTotalsKey_OutStr" pos_x="2" pos_y="14"/>
+  </key>
+  <key background_colour="white" id="5008" key_code="9" name="acknowledge_Key">
+    <include_object name="acknowledgeKey_OutStr" pos_x="2" pos_y="22"/>
+  </key>
+
+  <!-- Text -->
+  <outputstring background_colour="navy" height="24" horizontal_justification="left" id="11000" name="designator_OutStr" options="transparent" value="SPR" width="56">
+    <include_object name="title_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="24" horizontal_justification="left" id="11001" name="runTitle_OutStr" options="transparent" value="SPREADER" width="300">
+    <include_object name="title_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11002" name="rateTitle_OutStr" options="transparent" value="RATE kg/ha" width="200">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="12" horizontal_justification="left" id="11003" name="targetLabel_OutStr" options="transparent" value="target" width="100">
+    <include_object name="small_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="12" horizontal_justification="left" id="11004" name="actualLabel_OutStr" options="transparent" value="actual" width="100">
+    <include_object name="small_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11005" name="speedLabel_OutStr" options="transparent" value="SPEED" width="100">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11006" name="speedUnit_OutStr" options="transparent" value="km/h" width="60">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11007" name="binLabel_OutStr" options="transparent" value="BIN" width="100">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11008" name="binUnit_OutStr" options="transparent" value="kg" width="60">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11009" name="areaLabel_OutStr" options="transparent" value="AREA" width="100">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11010" name="areaUnit_OutStr" options="transparent" value="ha" width="60">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="lime" height="16" horizontal_justification="left" id="11011" name="tcOnline_OutStr" options="" value="  TC OK " width="110">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="red" height="16" horizontal_justification="left" id="11012" name="tcOffline_OutStr" options="" value="  NO TC " width="110">
+    <include_object name="labelWhite_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11013" name="masterOn_OutStr" options="transparent" value="MASTER ON" width="200">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11014" name="masterOff_OutStr" options="transparent" value="MASTER OFF" width="200">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11015" name="modeAuto_OutStr" options="transparent" value="AUTO" width="200">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11016" name="modeManual_OutStr" options="transparent" value="MANUAL" width="200">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="12" horizontal_justification="left" id="11017" name="rateFromTc_OutStr" options="transparent" value="rate from the task controller" width="300">
+    <include_object name="small_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="12" horizontal_justification="left" id="11018" name="rateFromOperator_OutStr" options="transparent" value="rate set here" width="300">
+    <include_object name="small_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="24" horizontal_justification="left" id="11019" name="totalsTitle_OutStr" options="transparent" value="TOTALS" width="300">
+    <include_object name="title_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11020" name="totalAreaLabel_OutStr" options="transparent" value="Area ha" width="230">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11021" name="appliedLabel_OutStr" options="transparent" value="Applied kg" width="230">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11022" name="lifetimeLabel_OutStr" options="transparent" value="Lifetime kg" width="230">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11023" name="distanceLabel_OutStr" options="transparent" value="Distance km" width="230">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="16" horizontal_justification="left" id="11024" name="workTimeLabel_OutStr" options="transparent" value="Working h" width="230">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="12" horizontal_justification="left" id="11025" name="totalsHint_OutStr" options="transparent" value="RESET clears area, applied and distance" width="460">
+    <include_object name="small_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="yellow" height="24" horizontal_justification="left" id="11026" name="alarmTitle_OutStr" options="transparent" value="ALARM" width="300">
+    <include_object name="alarmTitle_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="yellow" height="64" horizontal_justification="left" id="11027" name="noSpeed_OutStr" options="transparent autowrap" value="No ground speed. Rates stop until the speed comes back." width="460">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="yellow" height="64" horizontal_justification="left" id="11028" name="noTaskController_OutStr" options="transparent autowrap" value="No task controller. Sections and rates are in the operator's hands." width="460">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="yellow" height="12" horizontal_justification="left" id="11029" name="alarmHint_OutStr" options="transparent" value="ACK to acknowledge" width="300">
+    <include_object name="small_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="12" horizontal_justification="left" id="11040" name="masterKey_OutStr" options="transparent" value="MASTER" width="56">
+    <include_object name="key_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="12" horizontal_justification="left" id="11041" name="autoKey_OutStr" options="transparent" value="AUTO" width="56">
+    <include_object name="key_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="24" horizontal_justification="left" id="11042" name="ratePlusKey_OutStr" options="transparent autowrap" value="RATE +" width="56">
+    <include_object name="keyBig_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="24" horizontal_justification="left" id="11043" name="rateMinusKey_OutStr" options="transparent autowrap" value="RATE -" width="56">
+    <include_object name="keyBig_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="24" horizontal_justification="left" id="11044" name="rateResetKey_OutStr" options="transparent autowrap" value="RATE 100%" width="56">
+    <include_object name="keyBig_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="12" horizontal_justification="left" id="11045" name="totalsKey_OutStr" options="transparent" value="TOTALS" width="56">
+    <include_object name="key_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="12" horizontal_justification="left" id="11046" name="homeKey_OutStr" options="transparent" value="HOME" width="56">
+    <include_object name="key_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="24" horizontal_justification="left" id="11047" name="resetTotalsKey_OutStr" options="transparent autowrap" value="RESET" width="56">
+    <include_object name="keyBig_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="white" height="12" horizontal_justification="left" id="11048" name="acknowledgeKey_OutStr" options="transparent" value="ACK" width="56">
+    <include_object name="key_Font" role="font_attributes"/>
+  </outputstring>
+
+  <!-- Numbers: the client sends values in the units noted -->
+  <outputnumber background_colour="white" format="fixed" height="48" horizontal_justification="left" id="12000" max_value="100000" min_value="0" name="targetRate_OutNum" number_of_decimals="0" offset="0" options="transparent" scale="1.0" value="0" width="200">
+    <include_object name="big_Font" role="font_attributes"/>
+  </outputnumber>
+  <outputnumber background_colour="white" format="fixed" height="48" horizontal_justification="left" id="12001" max_value="100000" min_value="0" name="actualRate_OutNum" number_of_decimals="0" offset="0" options="transparent" scale="1.0" value="0" width="200">
+    <include_object name="big_Font" role="font_attributes"/>
+  </outputnumber>
+  <!-- mm/s shown as km/h -->
+  <outputnumber background_colour="white" format="fixed" height="32" horizontal_justification="left" id="12002" max_value="100000" min_value="0" name="groundSpeed_OutNum" number_of_decimals="1" offset="0" options="transparent" scale="0.0036" value="0" width="110">
+    <include_object name="medium_Font" role="font_attributes"/>
+  </outputnumber>
+  <!-- kg -->
+  <outputnumber background_colour="white" format="fixed" height="32" horizontal_justification="left" id="12003" max_value="1000000" min_value="0" name="binLevel_OutNum" number_of_decimals="0" offset="0" options="transparent" scale="1.0" value="0" width="140">
+    <include_object name="medium_Font" role="font_attributes"/>
+  </outputnumber>
+  <!-- m2 shown as ha -->
+  <outputnumber background_colour="white" format="fixed" height="32" horizontal_justification="left" id="12004" max_value="100000000" min_value="0" name="area_OutNum" number_of_decimals="2" offset="0" options="transparent" scale="0.0001" value="0" width="110">
+    <include_object name="medium_Font" role="font_attributes"/>
+  </outputnumber>
+  <outputnumber background_colour="white" format="fixed" height="32" horizontal_justification="left" id="12005" max_value="100000000" min_value="0" name="totalArea_OutNum" number_of_decimals="2" offset="0" options="transparent" scale="0.0001" value="0" width="200">
+    <include_object name="medium_Font" role="font_attributes"/>
+  </outputnumber>
+  <outputnumber background_colour="white" format="fixed" height="32" horizontal_justification="left" id="12006" max_value="100000000" min_value="0" name="applied_OutNum" number_of_decimals="0" offset="0" options="transparent" scale="1.0" value="0" width="200">
+    <include_object name="medium_Font" role="font_attributes"/>
+  </outputnumber>
+  <outputnumber background_colour="white" format="fixed" height="32" horizontal_justification="left" id="12007" max_value="100000000" min_value="0" name="lifetime_OutNum" number_of_decimals="0" offset="0" options="transparent" scale="1.0" value="0" width="200">
+    <include_object name="medium_Font" role="font_attributes"/>
+  </outputnumber>
+  <!-- m shown as km -->
+  <outputnumber background_colour="white" format="fixed" height="32" horizontal_justification="left" id="12008" max_value="100000000" min_value="0" name="distance_OutNum" number_of_decimals="2" offset="0" options="transparent" scale="0.001" value="0" width="200">
+    <include_object name="medium_Font" role="font_attributes"/>
+  </outputnumber>
+  <!-- s shown as h -->
+  <outputnumber background_colour="white" format="fixed" height="32" horizontal_justification="left" id="12009" max_value="100000000" min_value="0" name="workTime_OutNum" number_of_decimals="1" offset="0" options="transparent" scale="0.000277778" value="0" width="200">
+    <include_object name="medium_Font" role="font_attributes"/>
+  </outputnumber>
+
+  <!-- Shapes -->
+  <rectangle height="40" id="14000" line_suppression="" name="titleBar_Rect" width="480">
+    <include_object name="none_Line" role="line_attributes"/>
+    <include_object name="navy_Fill" role="fill_attributes"/>
+  </rectangle>
+  <rectangle height="44" id="14001" line_suppression="" name="master_Rect" width="220">
+    <include_object name="black_Line" role="line_attributes"/>
+    <include_object name="off_Fill" role="fill_attributes"/>
+  </rectangle>
+  <rectangle height="44" id="14002" line_suppression="" name="mode_Rect" width="220">
+    <include_object name="black_Line" role="line_attributes"/>
+    <include_object name="off_Fill" role="fill_attributes"/>
+  </rectangle>
+  <rectangle height="50" id="14010" line_suppression="" name="section1_Rect" width="54">
+    <include_object name="black_Line" role="line_attributes"/>
+    <include_object name="off_Fill" role="fill_attributes"/>
+  </rectangle>
+  <rectangle height="50" id="14011" line_suppression="" name="section2_Rect" width="54">
+    <include_object name="black_Line" role="line_attributes"/>
+    <include_object name="off_Fill" role="fill_attributes"/>
+  </rectangle>
+  <rectangle height="50" id="14012" line_suppression="" name="section3_Rect" width="54">
+    <include_object name="black_Line" role="line_attributes"/>
+    <include_object name="off_Fill" role="fill_attributes"/>
+  </rectangle>
+  <rectangle height="50" id="14013" line_suppression="" name="section4_Rect" width="54">
+    <include_object name="black_Line" role="line_attributes"/>
+    <include_object name="off_Fill" role="fill_attributes"/>
+  </rectangle>
+  <rectangle height="50" id="14014" line_suppression="" name="section5_Rect" width="54">
+    <include_object name="black_Line" role="line_attributes"/>
+    <include_object name="off_Fill" role="fill_attributes"/>
+  </rectangle>
+  <rectangle height="50" id="14015" line_suppression="" name="section6_Rect" width="54">
+    <include_object name="black_Line" role="line_attributes"/>
+    <include_object name="off_Fill" role="fill_attributes"/>
+  </rectangle>
+  <rectangle height="50" id="14016" line_suppression="" name="section7_Rect" width="54">
+    <include_object name="black_Line" role="line_attributes"/>
+    <include_object name="off_Fill" role="fill_attributes"/>
+  </rectangle>
+  <rectangle height="50" id="14017" line_suppression="" name="section8_Rect" width="54">
+    <include_object name="black_Line" role="line_attributes"/>
+    <include_object name="off_Fill" role="fill_attributes"/>
+  </rectangle>
+  <!-- percent full -->
+  <linearbargraph colour="olive" height="24" id="18000" max_value="100" min_value="0" name="binLevel_BarGraph" number_of_ticks="5" options="border+ticks+horizontal+growpositive" target_line_colour="red" target_value="0" value="0" width="210"/>
+
+  <!-- Pointers: the client points them at the strings above -->
+  <objectpointer id="27000" name="tcStatus_ObjPtr">
+    <include_object name="tcOffline_OutStr" role="value"/>
+  </objectpointer>
+  <objectpointer id="27001" name="masterStatus_ObjPtr">
+    <include_object name="masterOff_OutStr" role="value"/>
+  </objectpointer>
+  <objectpointer id="27002" name="modeStatus_ObjPtr">
+    <include_object name="modeManual_OutStr" role="value"/>
+  </objectpointer>
+  <objectpointer id="27003" name="prescription_ObjPtr">
+    <include_object name="rateFromOperator_OutStr" role="value"/>
+  </objectpointer>
+
+  <!-- Attributes -->
+  <fontattributes font_colour="white" font_size="16x24" font_style="bold" font_type="latin1" id="23000" name="title_Font"/>
+  <fontattributes font_colour="black" font_size="12x16" font_style="normal" font_type="latin1" id="23001" name="label_Font"/>
+  <fontattributes font_colour="white" font_size="12x16" font_style="normal" font_type="latin1" id="23002" name="labelWhite_Font"/>
+  <fontattributes font_colour="grey" font_size="8x12" font_style="normal" font_type="latin1" id="23003" name="small_Font"/>
+  <fontattributes font_colour="black" font_size="32x48" font_style="normal" font_type="latin1" id="23004" name="big_Font"/>
+  <fontattributes font_colour="black" font_size="16x24" font_style="normal" font_type="latin1" id="23005" name="medium_Font"/>
+  <fontattributes font_colour="black" font_size="8x12" font_style="normal" font_type="latin1" id="23006" name="key_Font"/>
+  <fontattributes font_colour="black" font_size="8x12" font_style="normal" font_type="latin1" id="23007" name="keyBig_Font"/>
+  <fontattributes font_colour="black" font_size="16x24" font_style="bold" font_type="latin1" id="23008" name="alarmTitle_Font"/>
+  <lineattributes id="24000" line_art="1111111111111111" line_colour="black" line_width="1" name="black_Line"/>
+  <lineattributes id="24001" line_art="1111111111111111" line_colour="navy" line_width="0" name="none_Line"/>
+  <fillattributes fill_colour="navy" fill_type="fillcolour" id="25000" name="navy_Fill"/>
+  <fillattributes fill_colour="lime" fill_type="fillcolour" id="25001" name="on_Fill"/>
+  <fillattributes fill_colour="yellow" fill_type="fillcolour" id="25002" name="pending_Fill"/>
+  <fillattributes fill_colour="silver" fill_type="fillcolour" id="25003" name="off_Fill"/>
+  <fillattributes fill_colour="red" fill_type="fillcolour" id="25004" name="error_Fill"/>
+</objectpool>

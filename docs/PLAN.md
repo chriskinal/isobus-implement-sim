@@ -379,6 +379,16 @@ Software's PCBUSB library, bundled by the stack under its own EULA) opens it at 
 bench setup for a real terminal or task controller; the by-hand checks of phases 3 and 7 can
 use it.
 
+**Spreader (2026-10-26).** From a capture of a real Raven lime spreader that an ISOBUS group
+member sent (kept out of the repository, `traces/` is ignored): a third machine type,
+`spreader`, with the profile `spreader-9m` (one 9.14 m section, lime, delays 0.2 / 0.02 s as
+measured), a profile key `elementNumbers` for DDOPs whose element numbers have gaps, as the
+Raven's had (0, 5, 9, 823, 1148), and the project's first pool of its own, `pools/spreader.xml`,
+written in PoolEdit's XML and built with PoolEdit's parser (GPL, used as a build tool only,
+the `.iop` committed). AOG-TaskController (develop) maps the gapped numbers correctly.
+`scenario_vt.py` drives the spreader screens on `vt_stub`, `scenario_tc.py` runs the profile
+against AOG-TaskController. Details in SPREADER.md.
+
 ## 9. Who uses it
 
 | Project | For |
@@ -395,6 +405,7 @@ use it.
    beside the stack; ask them once phase 2 works.
 3. **How real is it?** Phase 6 captures are the check: where the simulator and a real machine
    differ, the simulator is wrong.
-4. **Pools to ship.** Only pools we made, or the stack's (MIT). A designer for new ones:
+4. **Pools to ship.** Only pools we made, or the stack's (MIT), never one taken from a capture.
+   A designer for new ones: PoolEdit (the spreader's, `pools/README.md`) or
    AgIsoTerminalDesigner.
 5. **A web page** to drive it by hand, beside the command line. After phase 2 if people ask.

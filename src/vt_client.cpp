@@ -3,9 +3,11 @@
 
 #include "../pools/aux_functions_ids.hpp"
 #include "../pools/base_pool_ids.hpp"
+#include "../pools/spreader_ids.hpp"
 #include "isobus/isobus/can_network_manager.hpp"
 #include "isobus/utility/iop_file_interface.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 
@@ -105,12 +107,18 @@ namespace sim
 		versionLabel = short_version_label(pool);
 		const auto slash = poolPath.find_last_of('/');
 		const std::string file = poolPath.substr(slash == std::string::npos ? 0 : slash + 1);
-		behaviour = file == "base.iop";
+		spreaderPool = file == "spreader.iop";
+		behaviour = file == "base.iop" || spreaderPool;
 		auxPool = file == "aux_functions.iop";
+		if (spreaderPool)
+		{
+			alarms[0].mask = spreader_pool::speedAlarm_AlarmMask;
+			alarms[1].mask = spreader_pool::tcAlarm_AlarmMask;
+		}
 
 		uploaded = pool;
 		connect();
-		wantedMask = behaviour ? mainRunscreen_DataMask : 0xFFFF;
+		wantedMask = spreaderPool ? spreader_pool::run_DataMask : (behaviour ? mainRunscreen_DataMask : 0xFFFF);
 		events.emit("vt", { { "connected", false }, { "pool", true }, { "path", poolPath }, { "bytes", pool.size() }, { "version", versionLabel }, { "behaviour", behaviour }, { "auxFunctions", auxPool } });
 		return true;
 	}
@@ -131,7 +139,26 @@ namespace sim
 		client->initialize(true);
 
 		helper = std::make_unique<isobus::VirtualTerminalClientUpdateHelper>(client);
-		if (behaviour)
+		if (spreaderPool)
+		{
+			using namespace spreader_pool;
+			const std::uint16_t rects[] = { section1_Rect, section2_Rect, section3_Rect, section4_Rect, section5_Rect, section6_Rect, section7_Rect, section8_Rect };
+			for (auto r : rects)
+			{
+				helper->add_tracked_attribute(r, 5, static_cast<std::uint32_t>(off_Fill));
+			}
+			helper->add_tracked_attribute(master_Rect, 5, static_cast<std::uint32_t>(off_Fill));
+			helper->add_tracked_attribute(mode_Rect, 5, static_cast<std::uint32_t>(off_Fill));
+			helper->add_tracked_numeric_value(tcStatus_ObjPtr, tcOffline_OutStr);
+			helper->add_tracked_numeric_value(masterStatus_ObjPtr, masterOff_OutStr);
+			helper->add_tracked_numeric_value(modeStatus_ObjPtr, modeManual_OutStr);
+			helper->add_tracked_numeric_value(prescription_ObjPtr, rateFromOperator_OutStr);
+			for (std::uint16_t n : { targetRate_OutNum, actualRate_OutNum, groundSpeed_OutNum, binLevel_OutNum, binLevel_BarGraph, area_OutNum, totalArea_OutNum, applied_OutNum, lifetime_OutNum, distance_OutNum, workTime_OutNum })
+			{
+				helper->add_tracked_numeric_value(n, 0);
+			}
+		}
+		else if (behaviour)
 		{
 			const std::uint16_t pointers[] = { section1EnableState_ObjPtr, section2EnableState_ObjPtr, section3EnableState_ObjPtr, section4EnableState_ObjPtr, section5EnableState_ObjPtr, section6EnableState_ObjPtr };
 			const std::uint16_t rects[] = { section1Status_OutRect, section2Status_OutRect, section3Status_OutRect, section4Status_OutRect, section5Status_OutRect, section6Status_OutRect };
@@ -273,6 +300,11 @@ namespace sim
 
 	void TerminalClient::act_on_key(std::uint16_t objectId)
 	{
+		if (spreaderPool)
+		{
+			act_on_spreader_key(objectId);
+			return;
+		}
 		switch (objectId)
 		{
 			case home_Key:
@@ -329,10 +361,83 @@ namespace sim
 		}
 	}
 
+	void TerminalClient::act_on_spreader_key(std::uint16_t objectId)
+	{
+		using namespace spreader_pool;
+		switch (objectId)
+		{
+			case totals_Key:
+				wantedMask = totals_DataMask;
+				show_mask(totals_DataMask);
+				return;
+			case run_Key:
+				wantedMask = run_DataMask;
+				show_mask(run_DataMask);
+				return;
+			case acknowledge_Key:
+				acknowledge_first_alarm();
+				return;
+			default:
+				break;
+		}
+		std::lock_guard<std::mutex> lock(modelMutex);
+		switch (objectId)
+		{
+			case master_Key:
+			{
+				const bool wanted = !model.boom(0).master;
+				for (std::size_t b = 0; b < model.boom_count(); b++)
+				{
+					model.set_master(b, wanted);
+				}
+				break;
+			}
+			case autoManual_Key:
+			{
+				const bool wanted = !model.boom(0).autoMode;
+				for (std::size_t b = 0; b < model.boom_count(); b++)
+				{
+					model.set_auto(b, wanted);
+				}
+				break;
+			}
+			// The rate keys hand the rate to the operator, as a Raven's rate buttons do: prescription
+			// control off (DDI 158 = 0), which the task controller can set back
+			case ratePlus_Key: // steps of a tenth
+			case rateMinus_Key:
+				for (std::size_t p = 0; p < model.product_count(); p++)
+				{
+					const double from = model.product(p).prescription ? model.target_rate(p) : model.product(p).operatorRate;
+					model.set_prescription(p, false);
+					model.set_operator_rate(p, from * (objectId == ratePlus_Key ? 1.1 : 1.0 / 1.1));
+				}
+				break;
+			case rateReset_Key:
+				for (std::size_t p = 0; p < model.product_count(); p++)
+				{
+					model.set_prescription(p, false);
+					model.set_operator_rate(p, profile.products[p].rate);
+				}
+				break;
+			case resetTotals_Key:
+				for (std::size_t p = 0; p < model.product_count(); p++)
+				{
+					model.reset_trip_total(p);
+				}
+				for (std::size_t b = 0; b < model.boom_count(); b++)
+				{
+					model.reset_boom_totals(b);
+				}
+				break;
+			default:
+				break;
+		}
+	}
+
 	void TerminalClient::on_value(const VTC::VTChangeNumericValueEvent &event)
 	{
 		events.emit("value", { { "id", event.objectID }, { "value", event.value } });
-		if (!behaviour)
+		if (!behaviour || spreaderPool)
 		{
 			return;
 		}
@@ -417,7 +522,7 @@ namespace sim
 		std::lock_guard<std::mutex> lock(vtMutex);
 		if (client && client->get_is_connected())
 		{
-			client->send_change_active_mask(example_WorkingSet, maskId);
+			client->send_change_active_mask(spreaderPool ? spreader_pool::spreader_WorkingSet : example_WorkingSet, maskId);
 			currentMask = maskId;
 		}
 	}
@@ -528,14 +633,89 @@ namespace sim
 				anyActive = true;
 			}
 		}
-		if (!anyActive && currentMask != wantedMask && (currentMask == noSpeed_AlarmMask || currentMask == noTaskController_AlarmMask))
+		const bool onAlarmMask = std::any_of(alarms.begin(), alarms.end(), [this](const Alarm &a) { return a.mask == currentMask; });
+		if (!anyActive && currentMask != wantedMask && onAlarmMask)
 		{
 			show_mask(wantedMask); // every alarm acknowledged or gone: back to the page the operator had
 		}
 	}
 
+	void TerminalClient::lay_out_sections()
+	{
+		// The bar has eight slots; the profile's sections share its width, and the slots left over shrink to nothing
+		using namespace spreader_pool;
+		const std::uint16_t rects[] = { section1_Rect, section2_Rect, section3_Rect, section4_Rect, section5_Rect, section6_Rect, section7_Rect, section8_Rect };
+		const std::size_t shown = std::min<std::size_t>(8, std::max<std::size_t>(1, profile.total_sections()));
+		const std::uint16_t width = static_cast<std::uint16_t>(460 / shown);
+		std::lock_guard<std::mutex> lock(vtMutex);
+		for (std::size_t i = 0; i < 8; i++)
+		{
+			if (i < shown)
+			{
+				client->send_change_size_command(rects[i], static_cast<std::uint16_t>(width - 4), 50);
+				client->send_change_child_position(rects[i], sections_Container, static_cast<std::uint16_t>(i * width), 0);
+			}
+			else
+			{
+				client->send_change_size_command(rects[i], 0, 0);
+			}
+		}
+	}
+
+	void TerminalClient::update_spreader_screen()
+	{
+		using namespace spreader_pool;
+		const bool tcConnected = tc.connected();
+		std::lock_guard<std::mutex> vtLock(vtMutex);
+		std::lock_guard<std::mutex> lock(modelMutex);
+		const std::uint16_t rects[] = { section1_Rect, section2_Rect, section3_Rect, section4_Rect, section5_Rect, section6_Rect, section7_Rect, section8_Rect };
+		std::size_t i = 0;
+		double areaM2 = 0, distanceMm = 0, timeS = 0;
+		for (std::size_t b = 0; b < model.boom_count(); b++)
+		{
+			for (std::size_t s = 0; s < model.boom(b).sections.size() && i < 8; s++, i++)
+			{
+				const auto &sec = model.section(b, s);
+				const std::uint16_t fill = sec.error ? error_Fill : (sec.actual ? on_Fill : (sec.commanded ? pending_Fill : off_Fill));
+				helper->set_attribute(rects[i], 5, static_cast<std::uint32_t>(fill));
+			}
+			areaM2 += model.boom(b).areaM2;
+			distanceMm += model.boom(b).effectiveDistanceMm;
+			timeS += model.boom(b).effectiveTimeS;
+		}
+		const auto &boom = model.boom(0);
+		helper->set_attribute(master_Rect, 5, static_cast<std::uint32_t>(boom.master ? on_Fill : off_Fill));
+		helper->set_numeric_value(masterStatus_ObjPtr, boom.master ? masterOn_OutStr : masterOff_OutStr);
+		helper->set_attribute(mode_Rect, 5, static_cast<std::uint32_t>(boom.autoMode ? on_Fill : off_Fill));
+		helper->set_numeric_value(modeStatus_ObjPtr, boom.autoMode ? modeAuto_OutStr : modeManual_OutStr);
+		helper->set_numeric_value(tcStatus_ObjPtr, tcConnected ? tcOnline_OutStr : tcOffline_OutStr);
+		auto whole = [](double v) { return static_cast<std::uint32_t>(std::max(0.0, v) + 0.5); };
+		if (model.product_count() > 0)
+		{
+			const auto &p = model.product(0);
+			const auto &pp = profile.products[0];
+			helper->set_numeric_value(prescription_ObjPtr, (p.prescription && tcConnected) ? rateFromTc_OutStr : rateFromOperator_OutStr);
+			helper->set_numeric_value(targetRate_OutNum, whole(model.target_rate(0)));
+			helper->set_numeric_value(actualRate_OutNum, whole(p.actualRate));
+			helper->set_numeric_value(binLevel_OutNum, whole(p.level));
+			helper->set_numeric_value(binLevel_BarGraph, whole(pp.bin.capacity > 0 ? 100.0 * p.level / pp.bin.capacity : 0));
+			helper->set_numeric_value(applied_OutNum, whole(p.tripTotal));
+			helper->set_numeric_value(lifetime_OutNum, whole(p.lifetimeTotal));
+		}
+		helper->set_numeric_value(groundSpeed_OutNum, whole(model.speed_known() ? model.speed_mm_s() : 0.0));
+		helper->set_numeric_value(area_OutNum, whole(areaM2));
+		helper->set_numeric_value(totalArea_OutNum, whole(areaM2));
+		helper->set_numeric_value(distance_OutNum, whole(distanceMm / 1000.0));
+		helper->set_numeric_value(workTime_OutNum, whole(timeS));
+	}
+
 	void TerminalClient::update_screen()
 	{
+		if (spreaderPool)
+		{
+			update_spreader_screen();
+			return;
+		}
 		std::lock_guard<std::mutex> vtLock(vtMutex);
 		std::lock_guard<std::mutex> lock(modelMutex);
 		const std::uint16_t pointers[] = { section1EnableState_ObjPtr, section2EnableState_ObjPtr, section3EnableState_ObjPtr, section4EnableState_ObjPtr, section5EnableState_ObjPtr, section6EnableState_ObjPtr };
@@ -582,6 +762,10 @@ namespace sim
 				fields["label"] = versionLabel;
 			}
 			events.emit("vt", fields);
+			if (connected && spreaderPool)
+			{
+				lay_out_sections();
+			}
 			if (connected && behaviour)
 			{
 				show_mask(wantedMask);

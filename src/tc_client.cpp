@@ -98,7 +98,7 @@ namespace sim
 		name = isobus::NAME(0);
 		name.set_arbitrary_address_capable(true);
 		name.set_industry_group(2);
-		name.set_device_class(profile.type == "sprayer" ? 6 : 4); // ISO 11783-5 IG2: 4 planters and seeders, 6 sprayers
+		name.set_device_class(profile.type == "sprayer" ? 6 : (profile.type == "spreader" ? 5 : 4)); // ISO 11783-5 IG2: 4 planters and seeders, 5 fertilizers, 6 sprayers
 		name.set_function_code(static_cast<std::uint8_t>(isobus::NAME::Function::RateControl));
 		name.set_identity_number(profile.identity);
 		name.set_manufacturer_code(1407); // PLAN.md open item 1

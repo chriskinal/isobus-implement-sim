@@ -301,11 +301,20 @@ second identity. `tests/scenario_faults.py` runs them all against AOG-TaskContro
   (the patch's two commits, 243 of 243 stack tests passing with them); the patch stays here
   until it lands and the pin moves.
 
-**Faults on the OrbStack VM (2026-10-27).** `scenario_faults.py` fails 2 of 29 there, on the
-last commit as well as on the AOW link work: `vt_stub` aborts ("pure virtual method called",
-SIGABRT) just after `fault busoff 50`, once right after an ETP receive abort ("bad sequence
-number"), so a crash in the stack's VT server under the error-frame flood. CI passed 29 on both
-runners for the same commit, and the VM passed earlier. Not yet looked into.
+**The `vt_stub` crash in the faults (2026-10-27, fixed).** `scenario_faults.py` failed 2 of 29
+now and then, on the OrbStack VM and on CI's arm64 runner: `vt_stub` died just after
+`fault busoff 50`, with "pure virtual method called" (SIGABRT) or SIGSEGV, each time just after
+the server logged a client's working set maintenance ("version 6 is higher than our reported
+version"). It was `vt_stub`'s own race, not the error frames: the stack runs the VT server's
+message handlers on the hardware interface's thread, where a client that comes back after
+`fault restart` gets a new working set by `emplace_back` on the server's list, while
+`vt_stub`'s main thread called the server's `update()` and copied and walked the same list and
+the working sets' object trees. The server has no lock. ThreadSanitizer showed both races (the
+list's reallocation; an object tree cleared for a pool sent again while it was scanned).
+`vt_stub` now does all of it on the stack's thread, as a listener of the hardware interface's
+periodic update, and a key's release goes 50 ms later from there instead of a sleep. With the
+fix ThreadSanitizer reports nothing over the faults, vt and aux scenarios. Anything else that
+uses the stack's VT server outside its thread has the same hazard.
 
 **Upstream filings (2026-10-22).** On AOG-TaskController, from the phase 1, 2 and 4 records:
 [#112](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/112) the UDP parser,

@@ -28,6 +28,7 @@
 #include <chrono>
 #include <csignal>
 #include <cstdio>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -253,10 +254,29 @@ int main(int argc, char **argv)
 	std::map<std::uint64_t, std::uint16_t> lastMask;
 	std::map<std::uint64_t, std::map<std::uint16_t, std::uint32_t>> lastValues;
 	std::uint32_t lastScan = 0;
-	while (running)
-	{
+	// Key and button releases, sent 50 ms after their press
+	std::vector<std::pair<std::uint32_t, std::function<void()>>> releases;
+	auto elapsed_ms = [] {
+		return static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
+	};
+
+	// Everything that touches the server runs on the stack's own thread, between its message
+	// handling: the server's handlers add a working set when a client arrives (a restart), and it
+	// has no lock, so a list walked from another thread meanwhile could be freed under it
+	auto step = [&] {
 		server.tick();
-		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		for (auto it = releases.begin(); it != releases.end();)
+		{
+			if (elapsed_ms() - it->first < 0x80000000u)
+			{
+				it->second();
+				it = releases.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
 
 		// Working sets: parsing state, active mask, numeric values the client changes
 		for (const auto &ws : server.working_sets())
@@ -389,14 +409,12 @@ int main(int argc, char **argv)
 				if (cmd == "key")
 				{
 					ok = server.send_soft_key_activation_message(Code::ButtonPressedOrLatched, id, mask, 1, dest);
-					std::this_thread::sleep_for(std::chrono::milliseconds(50));
-					ok = server.send_soft_key_activation_message(Code::ButtonUnlatchedOrReleased, id, mask, 1, dest) && ok;
+					releases.emplace_back(elapsed_ms() + 50, [&server, id, mask, dest] { server.send_soft_key_activation_message(Code::ButtonUnlatchedOrReleased, id, mask, 1, dest); });
 				}
 				else
 				{
 					ok = server.send_button_activation_message(Code::ButtonPressedOrLatched, id, mask, 1, dest);
-					std::this_thread::sleep_for(std::chrono::milliseconds(50));
-					ok = server.send_button_activation_message(Code::ButtonUnlatchedOrReleased, id, mask, 1, dest) && ok;
+					releases.emplace_back(elapsed_ms() + 50, [&server, id, mask, dest] { server.send_button_activation_message(Code::ButtonUnlatchedOrReleased, id, mask, 1, dest); });
 				}
 			}
 			else if (cmd == "ack")
@@ -455,8 +473,14 @@ int main(int argc, char **argv)
 			}
 			emit("command", { { "command", line }, { "ok", ok } });
 		}
+	};
+	const auto stepListener = isobus::CANHardwareInterface::get_periodic_update_event_dispatcher().add_listener(step);
+	while (running)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	}
 	isobus::CANHardwareInterface::stop();
+	isobus::CANHardwareInterface::get_periodic_update_event_dispatcher().remove_listener(stepListener);
 	std::fclose(stdin);
 	if (reader.joinable())
 	{

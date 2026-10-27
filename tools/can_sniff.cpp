@@ -4,7 +4,7 @@
 // line with the counts; with the MacCAN driver, the controller's bus state too, which is how a
 // bus with no other node (no acknowledgement) or a wrong bitrate shows itself.
 //
-//   can_sniff [--driver peak|socketcan|virtual] [--interface 1|can0] [--seconds 10] [--probe]
+//   can_sniff [--driver peak|socketcan|virtual|aowlink] [--interface 1|can0] [--seconds 10] [--probe]
 //
 // --probe sends a request for address claim to every node (PGN EA00 asking for EE00, from the
 // null address) after the first second: a node on the bus must answer with its address claim,
@@ -15,7 +15,7 @@
 #include "isobus/hardware_integration/available_can_drivers.hpp"
 #include "isobus/hardware_integration/can_hardware_interface.hpp"
 
-#include "create_can_driver.hpp"
+#include "can_driver.hpp"
 
 #ifdef ISOBUS_MACCANPCAN_AVAILABLE
 #include "isobus/hardware_integration/PCBUSB.h"
@@ -153,12 +153,12 @@ int main(int argc, char *argv[])
 			probe = true;
 		else
 		{
-			std::fprintf(stderr, "usage: can_sniff [--driver peak|socketcan|virtual] [--interface 1|can0] [--seconds 10] [--probe]\n");
+			std::fprintf(stderr, "usage: can_sniff [--driver peak|socketcan|virtual|aowlink] [--interface 1|can0] [--seconds 10] [--probe]\n");
 			return 2;
 		}
 	}
 
-	auto driver = CANDriverFactory::create(interfaceName, driverName);
+	auto driver = sim::create_can_driver(interfaceName, driverName, "can_sniff");
 	if (nullptr == driver)
 	{
 		std::fprintf(stderr, "can_sniff: no CAN driver for \"%s\" on \"%s\"\n", driverName.c_str(), interfaceName.c_str());

@@ -28,6 +28,10 @@ build/implement --profile profiles/sprayer-24.json --interface vcan0
 
 Options: `--driver virtual` for the stack's in-process bus, `--driver peak --interface 1` for a
 PEAK PCAN-USB on macOS (the stack's MacCAN driver; the first channel is 1),
+`--driver aowlink --interface <host[:port]>` for the bus through an AOW link gateway over the
+network (SharpIsoTerm's ESP32 gateway or `aow-linkd`, `src/aow_link_driver.hpp`; one control
+client per gateway, so two programs need two gateways or a gateway for one and a CAN interface
+for the other), every tool takes it too,
 `--port 0` (or a number) to take commands on a local TCP port as well as stdin, `--pool <file.iop>`
 to show another pool than the profile's (one extracted from a capture, or `pools/aux_functions.iop`),
 `--section-control setpoint|actualSettable|perElement` to override the profile's section
@@ -73,7 +77,9 @@ that takes any DDOP, sends set-value, request and measurement commands from stdi
 every value the implement reports. `build/aux_input --interface vcan0` is a joystick with a
 button and a slider for AUX-N, driven from stdin; on Linux, `--joystick /dev/i2c-1` drives it
 from a real stick too, the I2C joystick module at 0x5A (one stick, five buttons) on a
-Raspberry Pi's I2C pins: the X axis is the slider, button A the button.
+Raspberry Pi's I2C pins: the X axis is the slider, button A the button. Where no I2C bus is
+free, the module hangs off an ESP32: `--joystick-serial <port>` with `tools/i2c_bridge` or the
+ESP32 AOW link gateway on USB, or `--joystick-tcp <gateway>` over the network to the gateway.
 
 ## Releases
 

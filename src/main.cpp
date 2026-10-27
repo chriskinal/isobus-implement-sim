@@ -1,6 +1,6 @@
 // implement: one simulated ISOBUS implement from a profile (docs/PLAN.md).
 //
-//   implement --profile profiles/sprayer-24.json [--interface vcan0] [--driver socketcan|virtual|peak]
+//   implement --profile profiles/sprayer-24.json [--interface vcan0] [--driver socketcan|virtual|peak|aowlink]
 //             [--port 0|<n>] [--pool <file.iop>] [--section-control setpoint|actualSettable|perElement]
 //             [--log debug|info|warn|error]
 //
@@ -14,7 +14,7 @@
 #include "tc_client.hpp"
 #include "vt_client.hpp"
 
-#include "create_can_driver.hpp"
+#include "can_driver.hpp"
 #include "isobus/isobus/can_stack_logger.hpp"
 
 #include <atomic>
@@ -67,7 +67,7 @@ namespace
 	void usage()
 	{
 		std::fprintf(stderr,
-		             "usage: implement --profile <file> [--interface vcan0] [--driver socketcan|virtual|peak] [--port 0|<n>] [--pool <file.iop>]\n"
+		             "usage: implement --profile <file> [--interface vcan0] [--driver socketcan|virtual|peak|aowlink] [--port 0|<n>] [--pool <file.iop>]\n"
 		             "                 [--section-control setpoint|actualSettable|perElement] [--log debug|info|warn|error] [--trace]\n");
 	}
 }
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
 	std::signal(SIGINT, on_signal);
 	std::signal(SIGTERM, on_signal);
 
-	auto realDriver = CANDriverFactory::create(interface, driverName);
+	auto realDriver = sim::create_can_driver(interface, driverName, "implement");
 	if (!realDriver)
 	{
 		return 1;

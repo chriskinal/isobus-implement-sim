@@ -64,17 +64,21 @@ target_include_directories(implement_core PUBLIC src)
 target_link_libraries(implement_core PUBLIC isobus::Isobus isobus::Utility nlohmann_json::nlohmann_json)
 target_compile_options(implement_core PRIVATE -Wall -Wextra)
 
+find_package(Threads REQUIRED)
+# The CAN drivers: the stack's, by its examples' factory, and the AOW link gateway client
+add_library(can_drivers STATIC src/can_driver.cpp src/aow_link_driver.cpp
+  ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
+target_include_directories(can_drivers PUBLIC src ${agisostack_SOURCE_DIR}/examples/common)
+target_link_libraries(can_drivers PUBLIC isobus::Isobus isobus::HardwareIntegration isobus::Utility Threads::Threads)
+
 add_executable(implement
   src/main.cpp
   src/tc_client.cpp
   src/vt_client.cpp
   src/fault_driver.cpp
-  src/commands.cpp
-  ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
-target_include_directories(implement PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
-target_link_libraries(implement PRIVATE implement_core isobus::Isobus isobus::HardwareIntegration isobus::Utility Threads::Threads)
+  src/commands.cpp)
+target_link_libraries(implement PRIVATE can_drivers implement_core isobus::Isobus isobus::HardwareIntegration isobus::Utility Threads::Threads)
 target_compile_options(implement PRIVATE -Wall -Wextra)
-find_package(Threads REQUIRED)
 
 enable_testing()
 add_executable(test_model tests/test_model.cpp)
@@ -85,21 +89,17 @@ add_executable(ddop_check tools/ddop_check.cpp)
 target_link_libraries(ddop_check PRIVATE isobus::Isobus isobus::Utility)
 
 # candump for the stack's drivers: raw frames on a PEAK adapter on the Mac, or any driver
-add_executable(can_sniff tools/can_sniff.cpp ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
-target_include_directories(can_sniff PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
-target_link_libraries(can_sniff PRIVATE isobus::Isobus isobus::HardwareIntegration isobus::Utility)
+add_executable(can_sniff tools/can_sniff.cpp)
+target_link_libraries(can_sniff PRIVATE can_drivers isobus::Isobus isobus::HardwareIntegration isobus::Utility)
 
 # A headless virtual terminal server for the scenarios (phase 3)
-add_executable(vt_stub tools/vt_stub.cpp ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
-target_include_directories(vt_stub PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
-target_link_libraries(vt_stub PRIVATE isobus::Isobus isobus::HardwareIntegration isobus::Utility nlohmann_json::nlohmann_json Threads::Threads)
+add_executable(vt_stub tools/vt_stub.cpp)
+target_link_libraries(vt_stub PRIVATE can_drivers isobus::Isobus isobus::HardwareIntegration isobus::Utility nlohmann_json::nlohmann_json Threads::Threads)
 
 # A headless task controller for the scenarios (phase 5)
-add_executable(tc_stub tools/tc_stub.cpp ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
-target_include_directories(tc_stub PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
-target_link_libraries(tc_stub PRIVATE isobus::Isobus isobus::HardwareIntegration isobus::Utility nlohmann_json::nlohmann_json Threads::Threads)
+add_executable(tc_stub tools/tc_stub.cpp)
+target_link_libraries(tc_stub PRIVATE can_drivers isobus::Isobus isobus::HardwareIntegration isobus::Utility nlohmann_json::nlohmann_json Threads::Threads)
 
 # A simulated auxiliary input device, a joystick (phase 7)
-add_executable(aux_input tools/aux_input.cpp ${agisostack_SOURCE_DIR}/examples/common/create_can_driver.cpp)
-target_include_directories(aux_input PRIVATE ${agisostack_SOURCE_DIR}/examples/common)
-target_link_libraries(aux_input PRIVATE isobus::Isobus isobus::HardwareIntegration isobus::Utility nlohmann_json::nlohmann_json Threads::Threads)
+add_executable(aux_input tools/aux_input.cpp)
+target_link_libraries(aux_input PRIVATE can_drivers isobus::Isobus isobus::HardwareIntegration isobus::Utility nlohmann_json::nlohmann_json Threads::Threads)

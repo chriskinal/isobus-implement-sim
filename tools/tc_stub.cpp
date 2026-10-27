@@ -10,8 +10,8 @@
 //   totals on|off                      the task-active bit in the status message
 //   quit
 //
-//   tc_stub [--interface vcan0] [--driver socketcan|virtual]
-#include "create_can_driver.hpp"
+//   tc_stub [--interface vcan0] [--driver socketcan|virtual|aowlink]
+#include "can_driver.hpp"
 #include "isobus/hardware_integration/can_hardware_interface.hpp"
 #include "isobus/isobus/can_network_manager.hpp"
 #include "isobus/isobus/can_stack_logger.hpp"
@@ -210,7 +210,7 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			std::fprintf(stderr, "usage: tc_stub [--interface vcan0] [--driver socketcan|virtual]\n");
+			std::fprintf(stderr, "usage: tc_stub [--interface vcan0] [--driver socketcan|virtual|aowlink]\n");
 			return 2;
 		}
 	}
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
 	std::signal(SIGINT, signal_handler);
 	std::signal(SIGTERM, signal_handler);
 
-	auto driver = CANDriverFactory::create(interface, driverName);
+	auto driver = sim::create_can_driver(interface, driverName, "tc_stub");
 	if (!driver)
 	{
 		return 1;

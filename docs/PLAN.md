@@ -301,6 +301,12 @@ second identity. `tests/scenario_faults.py` runs them all against AOG-TaskContro
   (the patch's two commits, 243 of 243 stack tests passing with them); the patch stays here
   until it lands and the pin moves.
 
+**Faults on the OrbStack VM (2026-10-27).** `scenario_faults.py` fails 2 of 29 there, on the
+last commit as well as on the AOW link work: `vt_stub` aborts ("pure virtual method called",
+SIGABRT) just after `fault busoff 50`, once right after an ETP receive abort ("bad sequence
+number"), so a crash in the stack's VT server under the error-frame flood. CI passed 29 on both
+runners for the same commit, and the VM passed earlier. Not yet looked into.
+
 **Upstream filings (2026-10-22).** On AOG-TaskController, from the phase 1, 2 and 4 records:
 [#112](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/112) the UDP parser,
 [#113](https://github.com/AgOpenGPS-Official/AOG-TaskController/issues/113) the pool queue
@@ -350,10 +356,32 @@ joystick takes its inputs; the stack's VT server base has no AUX-N, so the assig
 (address 0x5A, one stick, buttons A to D and OK, its own microcontroller doing the reading) on
 the bench Raspberry Pi CM4, which has the CAN HAT. `aux_input --joystick /dev/i2c-1` reads it
 (`tools/i2c_joystick.hpp`), the X axis as the slider and button A as the button; every change
-prints a `joystick` event with the raw registers. The register map comes from the only
-description found, github.com/jitsengupta/PicoLibrary `JoystickHandle.py`: X and Y at 0x10 and
-0x11, a byte each; the buttons at 0x20 to 0x24 (OK, C, A, B, D) as event codes, 8 for not
-pressed. Not yet run against the module; OrbStack's kernel has no I2C, so only the build and
+prints a `joystick` event with the raw registers. The register map, first from
+github.com/jitsengupta/PicoLibrary `JoystickHandle.py` and confirmed by the vendor's Arduino demo
+that came with the board (2026-10-26): X and Y at 0x10 and 0x11, a byte each; the buttons at
+0x20 to 0x24 (OK, C, A, B, D) as the last event of each (0 down, 1 up, 2 repeat, 3 click,
+4 double click, 5 and 6 long press, 8 nothing). They are events, so a button counts as held on
+0, 2, 5 or 6 only; a release reads 1 and then a click before it reads 8. Wiring, from the
+module's schematic (nulllaborg/mini-joystick-module, a CH32V003 at 0x5A): no regulator, and the
+4.7k I2C pull-ups go to VCC, so on a Pi it is powered from 3.3 V (pin 1), never 5 V; SDA pin 3,
+SCL pin 5, ground pin 6. The stick's pots run off the same VCC as the ADC, so the readings do
+not depend on the supply. The bench CM4 carries the AOW HAT, which drives GPIO2 and GPIO3 as
+outputs (motor direction and watchdog enable) and has every other header GPIO taken, so there
+the module hangs off an ESP32 instead (SDA GPIO21, SCL GPIO22, 3V3) running `tools/i2c_bridge`,
+a register read over USB serial and nothing else, and `aux_input --joystick-serial
+/dev/ttyUSB0` reads it; the register map and button handling stay in `i2c_joystick.hpp`.
+Checked against a fake bridge on a pty (handshake, a reset banner mid-stream, button codes,
+wrong address). Measured on the module through the bridge (2026-10-26): both axes rest at
+exactly 0x80 with no jitter and reach 0 and 255; a press reads 0 while held, a release 1 for
+about 300 ms, then 3 (the click) for about 40 ms, then 8, so the old "not 8 is held" would let
+go about a third of a second late; a hold reads 0 for a second, then 6 until released, then 1
+and 8 with no click. The ESP32 then became SharpIsoTerm's AOW link gateway
+(`gateway/esp32`, with a VP230 on its own CAN controller), which keeps the bridge on its serial
+port and serves it on TCP port 2324 as well; `--driver aowlink` (any of our programs) reaches
+the bus through such a gateway. So `aux_input --driver aowlink --interface
+aow-gateway-d430.local --joystick-tcp aow-gateway-d430.local` on the Mac has the stick and the
+bus with nothing wired to the Mac: checked 2026-10-27, it read the stick and claimed address 0x80
+on the bench bus (seen on the HAT's `hatcan3`). Not yet run against the module; OrbStack's kernel has no I2C, so only the build and
 the error paths are checked here. A firmware for a Feather M4 CAN Express was built and ran
 (address claimed, the stack on `millis()`) but was set aside for the CM4, which needs no second
 codebase. Still to do: a pool with both axes and all five buttons, and functions on the

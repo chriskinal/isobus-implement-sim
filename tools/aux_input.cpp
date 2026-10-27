@@ -324,6 +324,16 @@ int main(int argc, char **argv)
 		{
 			lastConnected = connected;
 			emit("vt", { { "connected", connected } });
+			// The stack keeps its own copy of each input, from 0, and takes updates only while
+			// connected. On an axis 0 is full deflection, and a stick left at rest never moves
+			// off the middle to send another, so every input's value goes over on connecting.
+			for (const auto &input : inputs)
+			{
+				if (connected)
+				{
+					client->update_auxiliary_input(input.id, input.value, input.analog ? 0xFFFF : input.transitions);
+				}
+			}
 		}
 		const bool learn = client->get_auxiliary_input_learn_mode_enabled();
 		if (learn != lastLearn)

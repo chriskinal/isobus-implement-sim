@@ -392,11 +392,27 @@ checked here. A firmware for a Feather M4 CAN Express was built and ran
 codebase. The spreader's pool has AUX-N functions of the joystick's types (SPREADER.md section
 4): five buttons as the soft keys and a rate trim for an axis. `vt_stub assign` sends the
 assignment a terminal would, so `scenario_aux.py` checks them all through the joystick pool
-(28 checks): a step, a reset, a master held past the input's one-second repeat that toggles
+(30 checks): a step, a reset, a master held past the input's one-second repeat that toggles
 once, the trim (2000 to about 2550 kg/ha in a second at full deflection, still when let go),
-unassigning. The first press after the first assignment failed once in five runs on the VM and
-was not reproduced; the check prints the stack's AUX-N log if it happens again. Still to do: the
-assignment by hand on a terminal that does AUX-N (AgIsoVirtualTerminal), with the real stick.
+a stick never moved leaving the rate alone, unassigning. The first press after the first
+assignment failed once in five runs on the VM and was not reproduced; the check prints the
+stack's AUX-N log if it happens again.
+
+Hand test on the bench (2026-10-27): the real stick on the ESP32 gateway's I2C bridge, by USB
+to the CM4 (`--joystick-serial /dev/ttyUSB0`), the spreader and `aux_input` on `hatcan3`. With
+AgIsoVirtualTerminal as the VT both pools loaded and the bus carried every input's status
+(both axes 0 to 64255, the buttons 0/1), but neither it nor SharpIsoTerm assigns AUX-N (espVT
+does, not on the bench). So `vt_stub` was the VT and made the assignments, and the stick worked
+every function by hand: A and B stepped the rate 2000 to 2200 and back, Y trimmed it to 2742 and
+down to 1982 and held at rest, OK toggled the master off and on, C switched to manual. It found
+a bug: the stack keeps its own copy of each input from 0 and takes updates only while connected,
+and a stick at rest never moves to send one, so Y went out as 0 (full deflection) and an
+assigned trim drained the rate to its floor; `aux_input` now sends every input's value on
+connecting. On the bench: `aow-hatd` listens on every USB serial device it has not identified,
+cycling the port's rate, so it must be stopped while `aux_input` uses the ESP32's port (or the
+stick read over Wi-Fi with `--joystick-tcp`); a client bound to one VT's NAME does not take a
+different VT at the same address until restarted; `aux_input` ignores SIGTERM while its stdin
+stays open (it waits on the reader). Still to do: the assignment on a terminal that does AUX-N.
 
 **Phase 8 record (2026-10-22).** The packaging is built and `v0.1.0` is cut (2026-10-22,
 from 50a4a98, tarballs for x64 and arm64 on the GitHub release). `package.sh` makes `dist/isobus-implement-sim-<version>-linux-<arch>.tar.gz` from a build:

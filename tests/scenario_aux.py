@@ -62,7 +62,7 @@ def main():
         t = wait(3.0, lambda: aux.find("command", command="slider 32000"))
         e = aux.find("command", command="slider 32000")
         check(e and e[0]["ok"] and e[0]["slider"] == 32000, "slider position taken")
-        note("assignment of inputs to functions needs a terminal that does AUX-N (AgIsoVirtualTerminal): by hand")
+        note("assignment of inputs to functions needs a terminal that does AUX-N (espVT; not AgIsoVirtualTerminal or SharpIsoTerm): by hand")
         note("implement aux events so far: %d; joystick learn-mode events: %d" % (len(imp.find("aux")), len(aux.find("learn"))))
         s = imp.status()
         check(s and s["vt"]["connected"], "status: terminal connected with the aux pool: %s" % (s and s["vt"]["pool"]))
@@ -98,7 +98,12 @@ def main():
         imp = Implement(implement, "profiles/spreader-9m.json", iface=iface, extra=["--log", "info"])  # the stack's AUX-N lines
         t = wait(40.0, lambda: imp.find("vt", connected=True))
         check(t is not None, "the spreader connects to the terminal")
-        aux.send("axis y 32127")  # centred, as a stick at rest is, before the trim is assigned to it
+        # The joystick afresh and never moved, as a real stick left at rest: its axes stay at their
+        # starting value, the middle, which has to reach the spreader without a move to send it
+        aux.stop()
+        aux = AuxInput(joystick, iface, pool="pools/joystick.iop")
+        t = wait(40.0, lambda: aux.connected)
+        check(t is not None, "the joystick, started again, connects (%s)" % ("%.1f s" % t if t else "never"))
         wait(1.0, lambda: False)  # the joystick's maintenance message, so the spreader knows it
 
         def product():
@@ -140,7 +145,9 @@ def main():
         check(s and s["booms"][0]["master"] is True, "a second press turns it back on")
 
         check(assign(6000, 3001), "assign TRIM to the stick's Y axis")
+        wait(1.5, lambda: False)
         before = product().get("target", 0)
+        check(abs(before - 2000) < 1, "a stick never moved leaves the rate alone: %.0f" % before)
         aux.send("axis y 64255")
         wait(1.0, lambda: False)
         aux.send("axis y 32127")

@@ -6,6 +6,11 @@
 //   button <object id>   a button pressed and released
 //   ack                  the alarm acknowledge (soft key activation, key number 0)
 //   value <id> <n>       a value entered (VT change numeric value)
+//   assign <function id> <input id>
+//                        an AUX-N assignment, as an operator makes on a terminal that does AUX-N:
+//                        the function's working set is told the input's device NAME and object
+//                        (Auxiliary Assignment Type 2 command); the stack's server has no AUX-N
+//   unassign <function id>
 //   quit
 //
 //   vt_stub [--interface vcan0] [--driver socketcan|virtual|aowlink]
@@ -401,6 +406,48 @@ int main(int argc, char **argv)
 			else if (cmd == "value")
 			{
 				ok = server.send_change_numeric_value_message(static_cast<std::uint16_t>(std::atoi(a1.c_str())), static_cast<std::uint32_t>(std::atol(a2.c_str())), dest);
+			}
+			else if (cmd == "assign" || cmd == "unassign")
+			{
+				// The working sets whose pools have the function and the input
+				using Type = isobus::VirtualTerminalObjectType;
+				const std::uint16_t functionId = static_cast<std::uint16_t>(std::atoi(a1.c_str()));
+				const std::uint16_t inputId = cmd == "assign" ? static_cast<std::uint16_t>(std::atoi(a2.c_str())) : 0xFFFF;
+				std::shared_ptr<isobus::VirtualTerminalServerManagedWorkingSet> functionSet, inputSet;
+				std::uint8_t functionType = 0x1F; // unassign
+				for (const auto &candidate : server.working_sets())
+				{
+					auto function = candidate->get_object_by_id(functionId);
+					if (function && function->get_object_type() == Type::AuxiliaryFunctionType2)
+					{
+						functionSet = candidate;
+						if (cmd == "assign")
+						{
+							functionType = static_cast<std::uint8_t>(std::static_pointer_cast<isobus::AuxiliaryFunctionType2>(function)->get_function_type());
+						}
+					}
+					auto input = cmd == "assign" ? candidate->get_object_by_id(inputId) : nullptr;
+					if (input && input->get_object_type() == Type::AuxiliaryInputType2)
+					{
+						inputSet = candidate;
+					}
+				}
+				ok = functionSet && functionSet->get_control_function() && (cmd == "unassign" || (inputSet && inputSet->get_control_function()));
+				if (ok)
+				{
+					const std::uint64_t inputName = cmd == "assign" ? inputSet->get_control_function()->get_NAME().get_full_name() : 0xFFFFFFFFFFFFFFFFULL;
+					std::uint8_t data[14] = { 0x24 }; // Auxiliary Assignment Type 2 command
+					for (int i = 0; i < 8; i++)
+					{
+						data[1 + i] = static_cast<std::uint8_t>(inputName >> (8 * i));
+					}
+					data[9] = functionType; // bit 7, store as preferred, left clear
+					data[10] = static_cast<std::uint8_t>(inputId & 0xFF);
+					data[11] = static_cast<std::uint8_t>(inputId >> 8);
+					data[12] = static_cast<std::uint8_t>(functionId & 0xFF);
+					data[13] = static_cast<std::uint8_t>(functionId >> 8);
+					ok = isobus::CANNetworkManager::CANNetwork.send_can_message(static_cast<std::uint32_t>(isobus::CANLibParameterGroupNumber::VirtualTerminalToECU), data, sizeof(data), cf, functionSet->get_control_function());
+				}
 			}
 			else
 			{

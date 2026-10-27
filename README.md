@@ -72,12 +72,15 @@ looks the same whether the frames were acknowledged or not; a sniffer on the oth
 `build/ddop_check <file.ddop>` parses a binary DDOP, such as one a task controller saved, and
 prints its element tree and any broken child references. `build/vt_stub --interface vcan0` is
 a headless virtual terminal for the scenarios: it takes the implement's pool and injects key
-presses and values from stdin. `build/tc_stub --interface vcan0` is a headless task controller
+presses and values from stdin, and AUX-N assignments (`assign <function id> <input id>`), which
+the stack's server cannot make itself. `build/tc_stub --interface vcan0` is a headless task controller
 that takes any DDOP, sends set-value, request and measurement commands from stdin, and prints
 every value the implement reports. `build/aux_input --interface vcan0` is a joystick with a
-button and a slider for AUX-N, driven from stdin; on Linux, `--joystick /dev/i2c-1` drives it
+button and a slider for AUX-N, driven from stdin (with `--pool pools/joystick.iop`, two axes and
+five buttons: `axis x|y <0..64255>`, `button a|b|c|d|ok on|off`); on Linux, `--joystick /dev/i2c-1` drives it
 from a real stick too, the I2C joystick module at 0x5A (one stick, five buttons) on a
-Raspberry Pi's I2C pins: the X axis is the slider, button A the button. Where no I2C bus is
+Raspberry Pi's I2C pins: the X axis is the slider, button A the button, or with the joystick
+pool every axis and button. Where no I2C bus is
 free, the module hangs off an ESP32: `--joystick-serial <port>` with `tools/i2c_bridge` or the
 ESP32 AOW link gateway on USB, or `--joystick-tcp <gateway>` over the network to the gateway.
 

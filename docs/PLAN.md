@@ -381,12 +381,22 @@ port and serves it on TCP port 2324 as well; `--driver aowlink` (any of our prog
 the bus through such a gateway. So `aux_input --driver aowlink --interface
 aow-gateway-d430.local --joystick-tcp aow-gateway-d430.local` on the Mac has the stick and the
 bus with nothing wired to the Mac: checked 2026-10-27, it read the stick and claimed address 0x80
-on the bench bus (seen on the HAT's `hatcan3`). Not yet run against the module; OrbStack's kernel has no I2C, so only the build and
-the error paths are checked here. A firmware for a Feather M4 CAN Express was built and ran
+on the bench bus (seen on the HAT's `hatcan3`). `pools/joystick.iop` (ours, from
+`joystick.xml`) is the module as an AUX-N device: both axes as analogue inputs that return to
+50 % and the five buttons as non-latching booleans, with its own NAME identity (903) and model
+code (2), since the stack's VT server refuses a second pool under the same NAME ("multiple
+working set objects"). `scenario_aux.py` checks it on `vt_stub`. The i2c-dev path (`--joystick /dev/i2c-1`) is not yet
+run against the module; OrbStack's kernel has no I2C, so only its build and error paths are
+checked here. A firmware for a Feather M4 CAN Express was built and ran
 (address claimed, the stack on `millis()`) but was set aside for the CM4, which needs no second
-codebase. Still to do: a pool with both axes and all five buttons, and functions on the
-implement's side an analogue axis can be assigned to (the stack's example pool has only
-on/off, toggle and plus).
+codebase. The spreader's pool has AUX-N functions of the joystick's types (SPREADER.md section
+4): five buttons as the soft keys and a rate trim for an axis. `vt_stub assign` sends the
+assignment a terminal would, so `scenario_aux.py` checks them all through the joystick pool
+(28 checks): a step, a reset, a master held past the input's one-second repeat that toggles
+once, the trim (2000 to about 2550 kg/ha in a second at full deflection, still when let go),
+unassigning. The first press after the first assignment failed once in five runs on the VM and
+was not reproduced; the check prints the stack's AUX-N log if it happens again. Still to do: the
+assignment by hand on a terminal that does AUX-N (AgIsoVirtualTerminal), with the real stick.
 
 **Phase 8 record (2026-10-22).** The packaging is built and `v0.1.0` is cut (2026-10-22,
 from 50a4a98, tarballs for x64 and arm64 on the GitHub release). `package.sh` makes `dist/isobus-implement-sim-<version>-linux-<arch>.tar.gz` from a build:

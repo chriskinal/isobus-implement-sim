@@ -361,6 +361,83 @@ namespace sim
 		}
 	}
 
+	// The spreader pool's AUX-N functions: the buttons do what the soft keys do, the trim moves the
+	// operator's rate while the stick is held over (apply_rate_trim)
+	void TerminalClient::on_spreader_aux(const VTC::AuxiliaryFunctionEvent &event)
+	{
+		using namespace spreader_pool;
+		const std::uint16_t function = event.function.functionObjectID;
+		if (function == rateTrim_AuxFunction)
+		{
+			trimPosition = event.value1;
+			trimHeardMs = events.now_ms();
+			return;
+		}
+		// A non-latching button reports 0 released, 1 pressed, 2 held, and the input device
+		// repeats its status every second: act on the press only
+		const bool down = event.value1 != 0 && event.value1 != 0xFFFF;
+		bool &was = auxDown[function];
+		const bool pressed = down && !was;
+		was = down;
+		if (!pressed)
+		{
+			return;
+		}
+		switch (function)
+		{
+			case master_AuxFunction:
+				act_on_spreader_key(master_Key);
+				break;
+			case autoManual_AuxFunction:
+				act_on_spreader_key(autoManual_Key);
+				break;
+			case ratePlus_AuxFunction:
+				act_on_spreader_key(ratePlus_Key);
+				break;
+			case rateMinus_AuxFunction:
+				act_on_spreader_key(rateMinus_Key);
+				break;
+			case rateReset_AuxFunction:
+				act_on_spreader_key(rateReset_Key);
+				break;
+			default:
+				break;
+		}
+	}
+
+	// The trim, every update: the stick's deflection from the middle moves the operator's rate by
+	// up to a quarter a second, taking it from the task controller as the rate keys do. A small
+	// deflection does nothing, and an input not heard from for 2.5 s (it repeats every second)
+	// counts as let go.
+	void TerminalClient::apply_rate_trim()
+	{
+		constexpr double MIDDLE = 32127.0, DEADBAND = 0.05, PER_SECOND = 0.25;
+		const std::uint32_t now = events.now_ms();
+		const double dt = std::min(0.5, (now - lastTrimMs) / 1000.0);
+		lastTrimMs = now;
+		double deflection = std::max(-1.0, std::min(1.0, (trimPosition - MIDDLE) / MIDDLE));
+		if (trimHeardMs == 0 || now - trimHeardMs > 2500 || std::abs(deflection) < DEADBAND)
+		{
+			deflection = 0;
+		}
+		if ((deflection != 0) != trimming)
+		{
+			trimming = deflection != 0;
+			events.emit("trim", { { "active", trimming } });
+		}
+		if (!trimming)
+		{
+			return;
+		}
+		std::lock_guard<std::mutex> lock(modelMutex);
+		for (std::size_t p = 0; p < model.product_count(); p++)
+		{
+			const double from = model.product(p).prescription ? model.target_rate(p) : model.product(p).operatorRate;
+			model.set_prescription(p, false);
+			model.set_operator_rate(p, from * (1.0 + PER_SECOND * deflection * dt));
+		}
+	}
+
 	void TerminalClient::act_on_spreader_key(std::uint16_t objectId)
 	{
 		using namespace spreader_pool;
@@ -480,6 +557,11 @@ namespace sim
 	{
 		// An assigned input moved (docs/PLAN.md phase 7). value1 is the state or position, value2 the transition count or 0xFFFF.
 		events.emit("aux", { { "function", event.function.functionObjectID }, { "input", event.function.inputObjectID }, { "type", static_cast<int>(event.function.functionType) }, { "value1", event.value1 }, { "value2", event.value2 } });
+		if (spreaderPool)
+		{
+			on_spreader_aux(event);
+			return;
+		}
 		if (!auxPool)
 		{
 			return;
@@ -776,6 +858,10 @@ namespace sim
 			return;
 		}
 		update_alarms();
+		if (spreaderPool)
+		{
+			apply_rate_trim();
+		}
 		const std::uint32_t now = events.now_ms();
 		if (now - lastScreenMs >= 100)
 		{

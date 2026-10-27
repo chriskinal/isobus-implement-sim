@@ -11,7 +11,9 @@
 #include "isobus/isobus/isobus_virtual_terminal_client.hpp"
 #include "isobus/isobus/isobus_virtual_terminal_client_update_helper.hpp"
 
+#include <atomic>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -71,6 +73,8 @@ namespace sim
 		void on_value(const isobus::VirtualTerminalClient::VTChangeNumericValueEvent &event);
 		void on_mask(const isobus::VirtualTerminalClient::VTChangeActiveMaskEvent &event);
 		void on_aux(const isobus::VirtualTerminalClient::AuxiliaryFunctionEvent &event);
+		void on_spreader_aux(const isobus::VirtualTerminalClient::AuxiliaryFunctionEvent &event);
+		void apply_rate_trim();
 		void act_on_key(std::uint16_t objectId);
 		void act_on_spreader_key(std::uint16_t objectId);
 		void show_mask(std::uint16_t maskId);
@@ -104,5 +108,10 @@ namespace sim
 		std::uint16_t currentMask = 0xFFFF;
 		std::uint16_t wantedMask = 0xFFFF; ///< The data mask to return to after an alarm
 		std::uint32_t lastScreenMs = 0;
+		std::map<std::uint16_t, bool> auxDown; ///< The spreader's AUX-N buttons as last reported, for acting on a press once
+		std::atomic<std::uint16_t> trimPosition{ 32127 }; ///< The rate trim's input, 0 to 64255, 32127 centred
+		std::atomic<std::uint32_t> trimHeardMs{ 0 };
+		std::uint32_t lastTrimMs = 0;
+		bool trimming = false;
 	};
 }

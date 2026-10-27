@@ -361,4 +361,44 @@
   <fillattributes fill_colour="yellow" fill_type="fillcolour" id="25002" name="pending_Fill"/>
   <fillattributes fill_colour="silver" fill_type="fillcolour" id="25003" name="off_Fill"/>
   <fillattributes fill_colour="red" fill_type="fillcolour" id="25004" name="error_Fill"/>
+  <!-- AUX-N functions (ISO 11783-6 Auxiliary Function Type 2), for a joystick assigned on the
+       terminal (tools/aux_input with pools/joystick.iop has inputs of the same types). The labels
+       are what the terminal shows while assigning, in a soft key's area. -->
+  <auxiliaryfunction2 background_colour="navy" function_attributes_a="analog-return-50" function_attributes_b="" id="6000" name="rateTrim_AuxFunction">
+    <include_object name="rateTrim_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryfunction2>
+  <auxiliaryfunction2 background_colour="navy" function_attributes_a="bool-latch-none" function_attributes_b="" id="6010" name="master_AuxFunction">
+    <include_object name="auxMaster_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryfunction2>
+  <auxiliaryfunction2 background_colour="navy" function_attributes_a="bool-latch-none" function_attributes_b="" id="6011" name="autoManual_AuxFunction">
+    <include_object name="auxAuto_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryfunction2>
+  <auxiliaryfunction2 background_colour="navy" function_attributes_a="bool-latch-none" function_attributes_b="" id="6012" name="ratePlus_AuxFunction">
+    <include_object name="auxRatePlus_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryfunction2>
+  <auxiliaryfunction2 background_colour="navy" function_attributes_a="bool-latch-none" function_attributes_b="" id="6013" name="rateMinus_AuxFunction">
+    <include_object name="auxRateMinus_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryfunction2>
+  <auxiliaryfunction2 background_colour="navy" function_attributes_a="bool-latch-none" function_attributes_b="" id="6014" name="rateReset_AuxFunction">
+    <include_object name="auxRateReset_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryfunction2>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11050" name="rateTrim_OutStr" options="transparent" value="TRIM" width="56">
+    <include_object name="auxLabel_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11051" name="auxMaster_OutStr" options="transparent" value="MASTER" width="56">
+    <include_object name="auxLabel_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11052" name="auxAuto_OutStr" options="transparent" value="AUTO" width="56">
+    <include_object name="auxLabel_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11053" name="auxRatePlus_OutStr" options="transparent" value="RATE+" width="56">
+    <include_object name="auxLabel_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11054" name="auxRateMinus_OutStr" options="transparent" value="RATE-" width="56">
+    <include_object name="auxLabel_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11055" name="auxRateReset_OutStr" options="transparent" value="RESET" width="56">
+    <include_object name="auxLabel_Font" role="font_attributes"/>
+  </outputstring>
+  <fontattributes font_colour="white" font_size="8x12" font_style="normal" font_type="latin1" id="23009" name="auxLabel_Font"/>
 </objectpool>

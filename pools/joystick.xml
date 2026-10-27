@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- The joystick's AUX-N inputs (tools/aux_input with the I2C joystick module): one stick, two
+     axes that spring back to the middle, and five push buttons. In PoolEdit's XML: open it in
+     PoolEdit to edit, then pools/build_pools.sh writes joystick.iop and joystick_ids.hpp. Every
+     object has an explicit id, which aux_input uses; keep them when editing. Our own work, MIT.
+
+     Each input is an Auxiliary Input Type 2 (ISO 11783-6 AUX-N); its label is what the
+     terminal shows while assigning it, drawn in a soft key's area (60 by 60 here). -->
+<objectpool dimension="480" fix_bitmap_path="" sk_height="60" sk_width="60" std_bitmap_path="">
+  <workingset background_colour="navy" id="0" name="joystick_WorkingSet" selectable="yes">
+    <include_object name="joystick_DataMask" role="active_mask"/>
+    <include_object name="designator_OutStr" pos_x="4" pos_y="18"/>
+  </workingset>
+
+  <!-- An input device has no screens of its own; the working set still needs a mask -->
+  <datamask background_colour="navy" id="1000" name="joystick_DataMask">
+    <include_object name="title_OutStr" pos_x="10" pos_y="10"/>
+  </datamask>
+
+  <!-- The stick: analogue, back to 50 % when let go -->
+  <auxiliaryinput2 background_colour="navy" function_attributes_a="analog-return-50" function_attributes_b="" id="3000" name="stickX_AuxInput">
+    <include_object name="stickX_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryinput2>
+  <auxiliaryinput2 background_colour="navy" function_attributes_a="analog-return-50" function_attributes_b="" id="3001" name="stickY_AuxInput">
+    <include_object name="stickY_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryinput2>
+
+  <!-- The buttons: boolean, not latching (pressed while held) -->
+  <auxiliaryinput2 background_colour="navy" function_attributes_a="bool-latch-none" function_attributes_b="" id="3010" name="buttonA_AuxInput">
+    <include_object name="buttonA_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryinput2>
+  <auxiliaryinput2 background_colour="navy" function_attributes_a="bool-latch-none" function_attributes_b="" id="3011" name="buttonB_AuxInput">
+    <include_object name="buttonB_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryinput2>
+  <auxiliaryinput2 background_colour="navy" function_attributes_a="bool-latch-none" function_attributes_b="" id="3012" name="buttonC_AuxInput">
+    <include_object name="buttonC_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryinput2>
+  <auxiliaryinput2 background_colour="navy" function_attributes_a="bool-latch-none" function_attributes_b="" id="3013" name="buttonD_AuxInput">
+    <include_object name="buttonD_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryinput2>
+  <auxiliaryinput2 background_colour="navy" function_attributes_a="bool-latch-none" function_attributes_b="" id="3014" name="buttonOk_AuxInput">
+    <include_object name="buttonOk_OutStr" pos_x="2" pos_y="22"/>
+  </auxiliaryinput2>
+
+  <outputstring background_colour="navy" height="24" horizontal_justification="left" id="11000" name="designator_OutStr" options="transparent" value="JOY" width="52">
+    <include_object name="title_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="24" horizontal_justification="left" id="11001" name="title_OutStr" options="transparent" value="JOYSTICK" width="300">
+    <include_object name="title_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11010" name="stickX_OutStr" options="transparent" value="STICK X" width="56">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11011" name="stickY_OutStr" options="transparent" value="STICK Y" width="56">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11012" name="buttonA_OutStr" options="transparent" value="BTN A" width="56">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11013" name="buttonB_OutStr" options="transparent" value="BTN B" width="56">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11014" name="buttonC_OutStr" options="transparent" value="BTN C" width="56">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11015" name="buttonD_OutStr" options="transparent" value="BTN D" width="56">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+  <outputstring background_colour="navy" height="16" horizontal_justification="left" id="11016" name="buttonOk_OutStr" options="transparent" value="PRESS" width="56">
+    <include_object name="label_Font" role="font_attributes"/>
+  </outputstring>
+
+  <fontattributes font_colour="white" font_size="16x24" font_style="bold" font_type="latin1" id="23000" name="title_Font"/>
+  <fontattributes font_colour="white" font_size="8x12" font_style="normal" font_type="latin1" id="23001" name="label_Font"/>
+</objectpool>

@@ -59,3 +59,10 @@ says how to build it). Data masks are 480 by 480, soft keys 60 by 60.
 
 A rate key hands the rate to the operator: prescription control goes off (DDI 158 = 0), as on
 the real machine, and the task controller can turn it back on.
+
+- **AUX-N functions** (Auxiliary Function Type 2), for a joystick assigned on the terminal:
+  MASTER, AUTO, RATE+, RATE− and RESET, buttons (non-latching) that do what the soft keys do,
+  on the press only; and TRIM, an analogue input that returns to the middle, which moves the
+  operator's rate by up to a quarter a second while held over (5 % deadband; an input silent for
+  2.5 s counts as let go), taking it from the task controller as the rate keys do.
+  `tools/aux_input --pool pools/joystick.iop` has inputs of the same types.

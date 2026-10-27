@@ -23,6 +23,12 @@ namespace spreader_pool
 	constexpr std::uint16_t run_Key = 5006;
 	constexpr std::uint16_t resetTotals_Key = 5007;
 	constexpr std::uint16_t acknowledge_Key = 5008;
+	constexpr std::uint16_t rateTrim_AuxFunction = 6000;
+	constexpr std::uint16_t master_AuxFunction = 6010;
+	constexpr std::uint16_t autoManual_AuxFunction = 6011;
+	constexpr std::uint16_t ratePlus_AuxFunction = 6012;
+	constexpr std::uint16_t rateMinus_AuxFunction = 6013;
+	constexpr std::uint16_t rateReset_AuxFunction = 6014;
 	constexpr std::uint16_t designator_OutStr = 11000;
 	constexpr std::uint16_t runTitle_OutStr = 11001;
 	constexpr std::uint16_t rateTitle_OutStr = 11002;
@@ -62,6 +68,12 @@ namespace spreader_pool
 	constexpr std::uint16_t homeKey_OutStr = 11046;
 	constexpr std::uint16_t resetTotalsKey_OutStr = 11047;
 	constexpr std::uint16_t acknowledgeKey_OutStr = 11048;
+	constexpr std::uint16_t rateTrim_OutStr = 11050;
+	constexpr std::uint16_t auxMaster_OutStr = 11051;
+	constexpr std::uint16_t auxAuto_OutStr = 11052;
+	constexpr std::uint16_t auxRatePlus_OutStr = 11053;
+	constexpr std::uint16_t auxRateMinus_OutStr = 11054;
+	constexpr std::uint16_t auxRateReset_OutStr = 11055;
 	constexpr std::uint16_t targetRate_OutNum = 12000;
 	constexpr std::uint16_t actualRate_OutNum = 12001;
 	constexpr std::uint16_t groundSpeed_OutNum = 12002;
@@ -93,6 +105,7 @@ namespace spreader_pool
 	constexpr std::uint16_t key_Font = 23006;
 	constexpr std::uint16_t keyBig_Font = 23007;
 	constexpr std::uint16_t alarmTitle_Font = 23008;
+	constexpr std::uint16_t auxLabel_Font = 23009;
 	constexpr std::uint16_t black_Line = 24000;
 	constexpr std::uint16_t none_Line = 24001;
 	constexpr std::uint16_t navy_Fill = 25000;

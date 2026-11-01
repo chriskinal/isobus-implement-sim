@@ -8,8 +8,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # AgIsoStack++ at a pinned upstream commit, fetched at configure time (PLAN.md section 2).
 # Move the pin forward before each release; never patch the fetched tree.
-set(AGISOSTACK_GIT_TAG "42ea80e14e4ad1340697bda632b7f6abdcd54826"
-    CACHE STRING "AgIsoStack++ commit to build against (upstream HEAD of 2026-10-19)")
+set(AGISOSTACK_GIT_TAG "9e9e70c35ad10259db524c0ed8ec63cd8dca078e"
+    CACHE STRING "AgIsoStack++ commit to build against (upstream HEAD of 2026-10-31)")
 
 # CAN drivers the stack is built with. SocketCAN is the one that matters (PLAN.md section 2);
 # the virtual driver lets the binaries configure and run on a machine without CAN, such as a
@@ -27,18 +27,9 @@ endif()
 include(FetchContent)
 set(BUILD_EXAMPLES OFF)
 set(BUILD_TESTING OFF)
-# cmake/agisostack-restart-races.patch, two races a restart from another thread meets in the
-# stack (PLAN.md phase 4 record): TaskControllerClient::terminate() and
-# VirtualTerminalClient::terminate() join the worker thread one caller at a time, since the stack
-# terminates itself on its error paths (a rejected DDOP, for one) from the hardware update thread
-# and an owner that calls terminate() in that window joined the same thread a second time and never
-# returned; and the network manager copies its partner and internal control function lists under
-# their mutex before walking them, since deactivate_control_function() erases from them under that
-# mutex while the walk did without it.
 FetchContent_Declare(agisostack
   GIT_REPOSITORY https://github.com/Open-Agriculture/AgIsoStack-plus-plus.git
-  GIT_TAG ${AGISOSTACK_GIT_TAG}
-  PATCH_COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=<SOURCE_DIR> -DPATCH=${CMAKE_CURRENT_SOURCE_DIR}/cmake/agisostack-restart-races.patch -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply_patch.cmake)
+  GIT_TAG ${AGISOSTACK_GIT_TAG})
 FetchContent_MakeAvailable(agisostack)
 
 # Phase 0 (PLAN.md section 8): the stack's seeder example, built unchanged from the fetched

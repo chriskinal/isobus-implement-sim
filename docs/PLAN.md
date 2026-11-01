@@ -299,7 +299,12 @@ second identity. `tests/scenario_faults.py` runs them all against AOG-TaskContro
   callbacks. Both races are the stack's: raised as
   [AgIsoStack++ PR #798](https://github.com/Open-Agriculture/AgIsoStack-plus-plus/pull/798)
   (the patch's two commits, 243 of 243 stack tests passing with them); the patch stays here
-  until it lands and the pin moves.
+  until it lands and the pin moves. Merged 2026-10-31 as 9e9e70c, reworked in review: only
+  the owner joins the worker now, an error on the stack's own threads asks the current run to
+  end instead of joining it, and the network manager's lookups take the same (now recursive)
+  mutex. The pin moved to 9e9e70c and the patch is gone. That pin also made `vt_stub` answer
+  two new server hooks, `handle_unexpected_working_set_shutdown` (a `shutdown` event) and
+  `abort_input` (nothing to close: the stub opens no input).
 
 **The `vt_stub` crash in the faults (2026-10-27, fixed).** `scenario_faults.py` failed 2 of 29
 now and then, on the OrbStack VM and on CI's arm64 runner: `vt_stub` died just after

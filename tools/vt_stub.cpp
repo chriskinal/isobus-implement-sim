@@ -85,6 +85,12 @@ namespace
 		{
 			emit("suspended", { { "name", name_of(ws) } });
 		}
+		void handle_unexpected_working_set_shutdown(std::shared_ptr<isobus::VirtualTerminalServerManagedWorkingSet> ws, UnexpectedShutdownReason reason) override
+		{
+			emit("shutdown", { { "name", name_of(ws) }, { "reason", reason == UnexpectedShutdownReason::MaintenanceTimeout ? "maintenanceTimeout" : "repeatedInitiating" } });
+		}
+		// The stub opens no input for editing, so an ESC from the implement has nothing to close.
+		std::uint16_t abort_input(std::shared_ptr<isobus::VirtualTerminalServerManagedWorkingSet>) override { return isobus::NULL_OBJECT_ID; }
 		SupportedWideCharsErrorCode get_supported_wide_chars(std::uint8_t, std::uint16_t, std::uint16_t, std::uint8_t &numberOfRanges, std::vector<std::uint8_t> &) override
 		{
 			numberOfRanges = 0;

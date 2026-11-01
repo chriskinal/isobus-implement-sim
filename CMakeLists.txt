@@ -27,9 +27,16 @@ endif()
 include(FetchContent)
 set(BUILD_EXAMPLES OFF)
 set(BUILD_TESTING OFF)
+# cmake/agisostack-aux-maintenance.patch, until the stack fixes it upstream (then drop it): since
+# the stack's #655 an auxiliary input unit sends its Auxiliary Input Type 2 Maintenance message
+# from start-up, initialising, before it connects, as ISO 11783-6 has it; the stack's VT server
+# NACKs every message but the working set maintenance from a client not yet connected, and the
+# unit, NACKed, disconnects and starts again, never connecting. The patch lets that message by
+# without a NACK (PLAN.md, phase 7).
 FetchContent_Declare(agisostack
   GIT_REPOSITORY https://github.com/Open-Agriculture/AgIsoStack-plus-plus.git
-  GIT_TAG ${AGISOSTACK_GIT_TAG})
+  GIT_TAG ${AGISOSTACK_GIT_TAG}
+  PATCH_COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=<SOURCE_DIR> -DPATCH=${CMAKE_CURRENT_SOURCE_DIR}/cmake/agisostack-aux-maintenance.patch -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply_patch.cmake)
 FetchContent_MakeAvailable(agisostack)
 
 # Phase 0 (PLAN.md section 8): the stack's seeder example, built unchanged from the fetched

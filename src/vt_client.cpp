@@ -136,6 +136,8 @@ namespace sim
 		client->get_vt_change_numeric_value_event_dispatcher().add_listener([this](const VTC::VTChangeNumericValueEvent &e) { on_value(e); });
 		client->get_vt_change_active_mask_event_dispatcher().add_listener([this](const VTC::VTChangeActiveMaskEvent &e) { on_mask(e); });
 		client->get_auxiliary_function_event_dispatcher().add_listener([this](const VTC::AuxiliaryFunctionEvent &e) { on_aux(e); });
+		// AUX-N functions are opt-in since the stack's #655, and take a terminal of function instance 0
+		client->set_auxiliary_functions_enabled(true);
 		client->initialize(true);
 
 		helper = std::make_unique<isobus::VirtualTerminalClientUpdateHelper>(client);

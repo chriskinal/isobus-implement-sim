@@ -1,0 +1,13 @@
+diff --git a/isobus/src/isobus_virtual_terminal_server.cpp b/isobus/src/isobus_virtual_terminal_server.cpp
+index 96332e2..8c3251d 100644
+--- a/isobus/src/isobus_virtual_terminal_server.cpp
++++ b/isobus/src/isobus_virtual_terminal_server.cpp
+@@ -2115,7 +2115,7 @@ namespace isobus
+ 
+ 				bool responseSent = parentServer->process_stateless_messages(message);
+ 				bool isManaged = parentServer->check_if_source_is_managed(message);
+-				if (!isManaged && !responseSent)
++				if (!isManaged && !responseSent && (static_cast<std::uint8_t>(Function::AuxiliaryInputTypeTwoMaintenanceMessage) != message.get_uint8_at(0)))
+ 				{
+ 					// Whomever this is has probably timed out. Send them a NACK
+ 					LOG_WARNING("[VT Server]: Received a non-status message from a client at address %u, but they are not connected to this VT.", message.get_identifier().get_source_address());

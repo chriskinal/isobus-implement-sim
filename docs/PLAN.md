@@ -457,6 +457,23 @@ the `.iop` committed). AOG-TaskController (develop) maps the gapped numbers corr
 `scenario_vt.py` drives the spreader screens on `vt_stub`, `scenario_tc.py` runs the profile
 against AOG-TaskController. Details in SPREADER.md.
 
+**AUX-N after the stack's #655 (2026-10-31).** Moving the pin to 9e9e70c failed 13 of 30
+checks in `scenario_aux.py`; the old pin passes all 30, and the stack's #655 (AUX-N preferred
+assignments, the commit after it) is the first that fails. Three changes in it:
+- The input unit sends its Auxiliary Input Type 2 Maintenance message from start-up,
+  initialising, not only once connected. The stack's VT server NACKs every message but the
+  working set maintenance from a client not yet connected, and the unit, NACKed, disconnects
+  and starts again: the joystick never connected ("The VT Server is NACK-ing our VT messages"
+  in a loop). The stack's bug, not ours: a terminal has to take the maintenance message from a
+  unit still initialising. `cmake/agisostack-aux-maintenance.patch` lets it by without a NACK,
+  until upstream fixes it.
+- An input sends its status only once the terminal has enabled it (Auxiliary Input Status
+  Type 2 Enable, ISO 11783-6), where it used to send regardless. `vt_stub`'s `assign` now
+  enables the input it assigns, as a terminal does.
+- A working set's AUX-N functions are opt-in: `set_auxiliary_functions_enabled(true)` before
+  `initialize()`, and only with a terminal of function instance 0. The implement turns them
+  on; without it the stack ignores the assignment ("AUX-N Functions are disabled").
+
 ## 9. Who uses it
 
 | Project | For |

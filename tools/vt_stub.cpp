@@ -9,7 +9,9 @@
 //   assign <function id> <input id>
 //                        an AUX-N assignment, as an operator makes on a terminal that does AUX-N:
 //                        the function's working set is told the input's device NAME and object
-//                        (Auxiliary Assignment Type 2 command); the stack's server has no AUX-N
+//                        (Auxiliary Assignment Type 2 command), and the input unit is told to
+//                        send that input's status (Auxiliary Input Status Type 2 Enable);
+//                        the stack's server has no AUX-N
 //   unassign <function id>
 //   quit
 //
@@ -471,6 +473,13 @@ int main(int argc, char **argv)
 					data[12] = static_cast<std::uint8_t>(functionId & 0xFF);
 					data[13] = static_cast<std::uint8_t>(functionId >> 8);
 					ok = isobus::CANNetworkManager::CANNetwork.send_can_message(static_cast<std::uint32_t>(isobus::CANLibParameterGroupNumber::VirtualTerminalToECU), data, sizeof(data), cf, functionSet->get_control_function());
+					if (ok && cmd == "assign")
+					{
+						// The input unit sends an input's status only once the terminal enables it
+						// (Auxiliary Input Status Type 2 Enable command), as a terminal does on assigning it
+						const std::uint8_t enable[8] = { 0x25, static_cast<std::uint8_t>(inputId & 0xFF), static_cast<std::uint8_t>(inputId >> 8), 0x01, 0xFF, 0xFF, 0xFF, 0xFF };
+						ok = isobus::CANNetworkManager::CANNetwork.send_can_message(static_cast<std::uint32_t>(isobus::CANLibParameterGroupNumber::VirtualTerminalToECU), enable, sizeof(enable), cf, inputSet->get_control_function());
+					}
 				}
 			}
 			else

@@ -113,9 +113,11 @@ Linux builds the stack with SocketCAN and the virtual driver; macOS with the vir
 and the stack's MacCAN PCAN driver, so a PEAK PCAN-USB plugged into the Mac works with
 `--driver peak` (the MacCAN library has UV Software's EULA, so it stays a local build and is
 not in the release tarballs). OrbStack's Linux kernel has no `peak_usb`, only `gs_usb`, so a
-PEAK adapter passed through to a machine there gets no `can0`; a candleLight-class adapter would. The stack is
-built as fetched, with no patches: the restart races of PLAN.md's phase 4 record are fixed
-upstream ([AgIsoStack++ PR #798](https://github.com/Open-Agriculture/AgIsoStack-plus-plus/pull/798), in the pin). To see the seeder example
+PEAK adapter passed through to a machine there gets no `can0`; a candleLight-class adapter would. The fetched stack
+carries one patch, `cmake/agisostack-aux-maintenance.patch`: its VT server takes an auxiliary
+input unit's maintenance message before the unit has connected instead of NACKing it, which
+since the stack's #655 kept every input unit from connecting (PLAN.md, AUX-N after #655). The
+restart races of PLAN.md's phase 4 record are fixed upstream ([AgIsoStack++ PR #798](https://github.com/Open-Agriculture/AgIsoStack-plus-plus/pull/798), in the pin). To see the seeder example
 claim an address on a virtual bus (what CI checks):
 
 ```sh
